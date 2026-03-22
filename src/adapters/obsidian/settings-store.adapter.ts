@@ -196,7 +196,7 @@ export class SettingsStore implements ISettingsAccess {
 	 * @param cwd - Optional filter by working directory
 	 * @returns Array of saved session metadata
 	 */
-	getSavedSessions(agentId?: string, cwd?: string): SavedSessionInfo[] {
+	getSavedSessions(agentId?: string, cwd?: string, managedAgentId?: string | null): SavedSessionInfo[] {
 		let sessions = this.state.savedSessions || [];
 
 		if (agentId) {
@@ -209,6 +209,18 @@ export class SettingsStore implements ISettingsAccess {
 				filterCwd = convertWindowsPathToWsl(cwd);
 			}
 			sessions = sessions.filter((s) => s.cwd === filterCwd);
+		}
+
+		// Filter by managedAgentId:
+		//   string → only sessions for that managed agent
+		//   null   → only regular (non-managed) sessions
+		//   undefined → no filtering
+		if (managedAgentId !== undefined) {
+			if (managedAgentId === null) {
+				sessions = sessions.filter((s) => !s.managedAgentId);
+			} else {
+				sessions = sessions.filter((s) => s.managedAgentId === managedAgentId);
+			}
 		}
 
 		// Sort by updatedAt descending (newest first)
@@ -229,14 +241,20 @@ export class SettingsStore implements ISettingsAccess {
 	 */
 	async deleteSession(sessionId: string): Promise<void> {
 		this.sessionLock = this.sessionLock.then(async () => {
+			// Look up managedAgentId before removing metadata
+			const existing = (this.state.savedSessions || []).find(
+				(s) => s.sessionId === sessionId,
+			);
+			const managedAgentId = existing?.managedAgentId;
+
 			// Delete metadata from savedSessions
 			const sessions = (this.state.savedSessions || []).filter(
 				(s) => s.sessionId !== sessionId,
 			);
 			await this.updateSettings({ savedSessions: sessions });
 
-			// Also delete message history file
-			await this.deleteSessionMessages(sessionId);
+			// Also delete message history file (in the correct subdirectory)
+			await this.deleteSessionMessages(sessionId, managedAgentId);
 		});
 		await this.sessionLock;
 	}
@@ -257,29 +275,43 @@ export class SettingsStore implements ISettingsAccess {
 	}
 
 	/**
-	 * Ensure the sessions directory exists.
-	 *
-	 * Creates the directory if it doesn't exist.
+	 * Ensure a directory exists, creating it if needed.
 	 */
-	private async ensureSessionsDir(): Promise<void> {
+	private async ensureDir(dirPath: string): Promise<void> {
 		const adapter = this.plugin.app.vault.adapter;
+		if (!(await adapter.exists(dirPath))) {
+			await adapter.mkdir(dirPath);
+		}
+	}
+
+	/**
+	 * Ensure the sessions directory (and optional subdirectory) exists.
+	 */
+	private async ensureSessionsDir(managedAgentId?: string): Promise<void> {
 		const sessionsDir = this.getSessionsDir();
-		if (!(await adapter.exists(sessionsDir))) {
-			await adapter.mkdir(sessionsDir);
+		await this.ensureDir(sessionsDir);
+		if (managedAgentId) {
+			const safeAgentId = managedAgentId.replace(/[^a-zA-Z0-9_-]/g, "_");
+			await this.ensureDir(`${sessionsDir}/${safeAgentId}`);
 		}
 	}
 
 	/**
 	 * Get the file path for a session's message history.
 	 *
-	 * Sanitizes sessionId to ensure safe file names.
+	 * If managedAgentId is provided, returns sessions/{managedAgentId}/{sessionId}.json.
+	 * Otherwise returns sessions/{sessionId}.json.
 	 *
 	 * @param sessionId - Session ID
+	 * @param managedAgentId - Optional managed agent UUID
 	 * @returns File path for the session's messages
 	 */
-	private getSessionFilePath(sessionId: string): string {
-		// Sanitize sessionId for safe file names (replace unsafe chars with _)
+	private getSessionFilePath(sessionId: string, managedAgentId?: string): string {
 		const safeId = sessionId.replace(/[^a-zA-Z0-9_-]/g, "_");
+		if (managedAgentId) {
+			const safeAgentId = managedAgentId.replace(/[^a-zA-Z0-9_-]/g, "_");
+			return `${this.getSessionsDir()}/${safeAgentId}/${safeId}.json`;
+		}
 		return `${this.getSessionsDir()}/${safeId}.json`;
 	}
 
@@ -297,8 +329,9 @@ export class SettingsStore implements ISettingsAccess {
 		sessionId: string,
 		agentId: string,
 		messages: ChatMessage[],
+		managedAgentId?: string,
 	): Promise<void> {
-		await this.ensureSessionsDir();
+		await this.ensureSessionsDir(managedAgentId);
 
 		// Serialize ChatMessage[] (convert timestamp: Date → string)
 		const serialized = messages.map((msg) => ({
@@ -314,7 +347,7 @@ export class SettingsStore implements ISettingsAccess {
 			savedAt: new Date().toISOString(),
 		};
 
-		const filePath = this.getSessionFilePath(sessionId);
+		const filePath = this.getSessionFilePath(sessionId, managedAgentId);
 		await this.plugin.app.vault.adapter.write(
 			filePath,
 			JSON.stringify(data, null, 2),
@@ -332,8 +365,9 @@ export class SettingsStore implements ISettingsAccess {
 	 */
 	async loadSessionMessages(
 		sessionId: string,
+		managedAgentId?: string,
 	): Promise<ChatMessage[] | null> {
-		const filePath = this.getSessionFilePath(sessionId);
+		const filePath = this.getSessionFilePath(sessionId, managedAgentId);
 		const adapter = this.plugin.app.vault.adapter;
 
 		if (!(await adapter.exists(filePath))) {
@@ -383,8 +417,8 @@ export class SettingsStore implements ISettingsAccess {
 	 *
 	 * @param sessionId - Session ID
 	 */
-	async deleteSessionMessages(sessionId: string): Promise<void> {
-		const filePath = this.getSessionFilePath(sessionId);
+	async deleteSessionMessages(sessionId: string, managedAgentId?: string): Promise<void> {
+		const filePath = this.getSessionFilePath(sessionId, managedAgentId);
 		const adapter = this.plugin.app.vault.adapter;
 
 		if (await adapter.exists(filePath)) {

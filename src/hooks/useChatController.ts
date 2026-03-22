@@ -53,6 +53,10 @@ export interface UseChatControllerOptions {
 	viewId: string;
 	workingDirectory?: string;
 	initialAgentId?: string;
+	/** Managed agent UUID — scopes session storage to a per-process folder */
+	managedAgentId?: string;
+	/** Vault-relative path to instruction file — sent as auto-mentioned note on every message */
+	instructionsPath?: string | null;
 	// TODO(code-block): Configuration for future code block chat view
 	config?: {
 		agent?: string;
@@ -97,7 +101,6 @@ export interface UseChatControllerReturn {
 	handleSendMessage: (
 		content: string,
 		attachments?: AttachedFile[],
-		contextPrefix?: string,
 	) => Promise<void>;
 	handleStopGeneration: () => Promise<void>;
 	handleNewChat: (requestedAgentId?: string) => Promise<void>;
@@ -129,7 +132,7 @@ export interface UseChatControllerReturn {
 export function useChatController(
 	options: UseChatControllerOptions,
 ): UseChatControllerReturn {
-	const { plugin, viewId, initialAgentId, config } = options;
+	const { plugin, viewId, initialAgentId, managedAgentId, instructionsPath, config } = options;
 
 	// ============================================================
 	// Memoized Services & Adapters
@@ -265,6 +268,7 @@ export function useChatController(
 		session,
 		settingsAccess: plugin.settingsStore,
 		cwd: vaultPath,
+		managedAgentId,
 		onSessionLoad: handleSessionLoad,
 		onMessagesRestore: chat.setMessagesFromLocal,
 		onLoadStart: handleLoadStart,
@@ -328,7 +332,7 @@ export function useChatController(
 	const shouldConvertToWsl = Platform.isWin && settings.windowsWslMode;
 
 	const handleSendMessage = useCallback(
-		async (content: string, attachments?: AttachedFile[], contextPrefix?: string) => {
+		async (content: string, attachments?: AttachedFile[]) => {
 			// Dismiss overlays on send
 			chat.clearError();
 			setAgentUpdateNotification(null);
@@ -366,16 +370,40 @@ export function useChatController(
 				}
 			}
 
+			// Determine the auto-mention note:
+			// - If instructionsPath is set, use the instructions file as the auto-mentioned note
+			// - Otherwise, use the active note (if auto-mention is enabled)
+			let activeNoteForMention: import("../domain/ports/vault-access.port").NoteMetadata | null = null;
+
+			if (instructionsPath) {
+				try {
+					const file = plugin.app.vault.getFileByPath(instructionsPath);
+					if (file) {
+						activeNoteForMention = {
+							path: file.path,
+							name: file.basename,
+							extension: file.extension,
+							created: file.stat.ctime,
+							modified: file.stat.mtime,
+						};
+					}
+				} catch (err) {
+					console.warn(
+						`[useChatController] Failed to resolve instructions file: ${instructionsPath}`,
+						err,
+					);
+				}
+			} else if (settings.autoMentionActiveNote) {
+				activeNoteForMention = autoMention.activeNote;
+			}
+
 			await chat.sendMessage(content, {
-				activeNote: settings.autoMentionActiveNote
-					? autoMention.activeNote
-					: null,
+				activeNote: activeNoteForMention,
 				vaultBasePath: vaultPath,
 				isAutoMentionDisabled: autoMention.isDisabled,
 				images: images.length > 0 ? images : undefined,
 				resourceLinks:
 					resourceLinks.length > 0 ? resourceLinks : undefined,
-				contextPrefix,
 			});
 
 			// Save session metadata locally on first message
@@ -399,6 +427,8 @@ export function useChatController(
 			settings.autoMentionActiveNote,
 			shouldConvertToWsl,
 			vaultPath,
+			instructionsPath,
+			plugin.app.vault,
 		],
 	);
 
@@ -621,6 +651,7 @@ export function useChatController(
 				localSessionIds: sessionHistory.localSessionIds,
 				isAgentReady: isSessionReady,
 				debugMode: settings.debugMode,
+				simplified: !!managedAgentId,
 				onRestoreSession: handleRestoreSession,
 				onForkSession: handleForkSession,
 				onDeleteSession: handleDeleteSession,
@@ -680,6 +711,7 @@ export function useChatController(
 				localSessionIds: sessionHistory.localSessionIds,
 				isAgentReady: isSessionReady,
 				debugMode: settings.debugMode,
+				simplified: !!managedAgentId,
 				onRestoreSession: handleRestoreSession,
 				onForkSession: handleForkSession,
 				onDeleteSession: handleDeleteSession,

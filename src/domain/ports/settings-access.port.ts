@@ -68,15 +68,19 @@ export interface ISettingsAccess {
 	saveSession(info: SavedSessionInfo): Promise<void>;
 
 	/**
-	 * Get saved sessions, optionally filtered by agentId and/or cwd.
+	 * Get saved sessions, optionally filtered by agentId, cwd, and/or managedAgentId.
 	 *
 	 * Returns sessions sorted by updatedAt (newest first).
 	 *
 	 * @param agentId - Optional filter by agent ID
 	 * @param cwd - Optional filter by working directory
+	 * @param managedAgentId - Filter by managed agent:
+	 *   - string: only sessions for that managed agent
+	 *   - null: only regular (non-managed) sessions
+	 *   - undefined: no filtering on this field
 	 * @returns Array of saved session metadata
 	 */
-	getSavedSessions(agentId?: string, cwd?: string): SavedSessionInfo[];
+	getSavedSessions(agentId?: string, cwd?: string, managedAgentId?: string | null): SavedSessionInfo[];
 
 	/**
 	 * Delete a saved session by sessionId.
@@ -93,39 +97,38 @@ export interface ISettingsAccess {
 	/**
 	 * Save message history for a session.
 	 *
-	 * Saves the full ChatMessage[] to a separate file in sessions/ directory.
-	 * Overwrites existing file if present.
+	 * Saves the full ChatMessage[] to a separate file.
+	 * If managedAgentId is provided, saves to sessions/{managedAgentId}/{sessionId}.json.
+	 * Otherwise saves to sessions/{sessionId}.json.
 	 *
 	 * @param sessionId - Session ID
 	 * @param agentId - Agent ID for validation
 	 * @param messages - Chat messages to save
+	 * @param managedAgentId - Optional managed agent UUID for per-process storage
 	 * @returns Promise that resolves when messages are saved
 	 */
 	saveSessionMessages(
 		sessionId: string,
 		agentId: string,
 		messages: ChatMessage[],
+		managedAgentId?: string,
 	): Promise<void>;
 
 	/**
 	 * Load message history for a session.
 	 *
-	 * Reads from sessions/{sessionId}.json file.
-	 * Returns null if file doesn't exist.
-	 *
 	 * @param sessionId - Session ID
+	 * @param managedAgentId - Optional managed agent UUID for per-process storage
 	 * @returns Promise that resolves with messages or null if not found
 	 */
-	loadSessionMessages(sessionId: string): Promise<ChatMessage[] | null>;
+	loadSessionMessages(sessionId: string, managedAgentId?: string): Promise<ChatMessage[] | null>;
 
 	/**
 	 * Delete message history file for a session.
 	 *
-	 * Called when session is deleted from savedSessions.
-	 * Silently succeeds if file doesn't exist.
-	 *
 	 * @param sessionId - Session ID
+	 * @param managedAgentId - Optional managed agent UUID for per-process storage
 	 * @returns Promise that resolves when file is deleted
 	 */
-	deleteSessionMessages(sessionId: string): Promise<void>;
+	deleteSessionMessages(sessionId: string, managedAgentId?: string): Promise<void>;
 }

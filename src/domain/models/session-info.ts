@@ -96,4 +96,6 @@ export interface SavedSessionInfo {
 	createdAt: string;
 	/** ISO 8601 timestamp of last activity */
 	updatedAt: string;
+	/** If this session belongs to a managed agent process, its UUID */
+	managedAgentId?: string;
 }

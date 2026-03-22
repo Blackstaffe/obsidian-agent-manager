@@ -5,7 +5,6 @@ import { Menu } from "obsidian";
 import type AgentManagerPlugin from "../../plugin";
 import type { IChatViewHost } from "../chat/types";
 import type { IAcpClient } from "../../adapters/acp/acp.adapter";
-import type { AttachedFile } from "../../domain/models/chat-input-state";
 
 import { useChatController } from "../../hooks/useChatController";
 import { ChatHeader } from "../chat/ChatHeader";
@@ -21,6 +20,8 @@ interface AgentRunChatProps {
 	instructionsPath: string | null;
 	/** Display name of the managed agent */
 	agentName: string;
+	/** Managed agent UUID — scopes session storage */
+	managedAgentId: string;
 }
 
 export function AgentRunChat({
@@ -29,10 +30,13 @@ export function AgentRunChat({
 	view,
 	instructionsPath,
 	agentName,
+	managedAgentId,
 }: AgentRunChatProps) {
 	const controller = useChatController({
 		plugin,
 		viewId,
+		managedAgentId,
+		instructionsPath,
 	});
 
 	const {
@@ -73,52 +77,15 @@ export function AgentRunChat({
 
 	const acpClientRef = useRef<IAcpClient>(acpAdapter);
 
-	/** Track whether instruction file has been sent in this session */
-	const instructionsSentRef = useRef(false);
 	/** Track whether agent run has been started (for resume logic) */
 	const hasStartedRef = useRef(false);
 
-	// Reset flags when the session restarts (messages cleared)
+	// Reset flag when the session restarts (messages cleared)
 	React.useEffect(() => {
 		if (messages.length === 0) {
-			instructionsSentRef.current = false;
 			hasStartedRef.current = false;
 		}
 	}, [messages.length]);
-
-	// ── Wrap sendMessage to inject instructions as context prefix ─
-	const handleSendWithInstructions = useCallback(
-		async (content: string, attachments?: AttachedFile[]) => {
-			let contextPrefix: string | undefined;
-
-			if (
-				!instructionsSentRef.current &&
-				instructionsPath &&
-				messages.length === 0
-			) {
-				instructionsSentRef.current = true;
-
-				try {
-					const fileContent =
-						await plugin.app.vault.adapter.read(instructionsPath);
-					if (fileContent) {
-						contextPrefix =
-							`<agent_instructions source="${instructionsPath}">\n` +
-							fileContent +
-							`\n</agent_instructions>`;
-					}
-				} catch (err) {
-					console.warn(
-						`[AgentRunChat] Failed to read instructions file: ${instructionsPath}`,
-						err,
-					);
-				}
-			}
-
-			await handleSendMessage(content, attachments, contextPrefix);
-		},
-		[handleSendMessage, instructionsPath, messages.length, plugin.app.vault],
-	);
 
 	// ── Header menu with agent switching ─────────────────────────
 	const handleShowMenu = useCallback(
@@ -164,39 +131,16 @@ export function AgentRunChat({
 	const handleRun = useCallback(async () => {
 		if (!instructionsPath || isSending) return;
 
-		// Resume: agent was already started, just tell it to continue
 		if (hasStartedRef.current) {
-			await handleSendWithInstructions(
+			await handleSendMessage(
 				"Continue executing the instructions from where you left off.",
 			);
 			return;
 		}
 
-		// First run: inject instructions as context prefix
-		try {
-			const fileContent =
-				await plugin.app.vault.adapter.read(instructionsPath);
-			if (!fileContent) return;
-
-			const contextPrefix =
-				`<agent_instructions source="${instructionsPath}">\n` +
-				fileContent +
-				`\n</agent_instructions>`;
-
-			instructionsSentRef.current = true;
-			hasStartedRef.current = true;
-			await handleSendMessage(
-				"Execute the instructions provided.",
-				undefined,
-				contextPrefix,
-			);
-		} catch (err) {
-			console.warn(
-				`[AgentRunChat] Failed to read instructions for run: ${instructionsPath}`,
-				err,
-			);
-		}
-	}, [isSending, instructionsPath, handleSendMessage, handleSendWithInstructions, plugin.app.vault]);
+		hasStartedRef.current = true;
+		await handleSendMessage("Run process.");
+	}, [isSending, instructionsPath, handleSendMessage]);
 
 	const runButton = useMemo(
 		() =>
@@ -253,14 +197,14 @@ export function AgentRunChat({
 				isRestoringSession={sessionHistory.loading}
 				agentLabel={activeAgentLabel}
 				availableCommands={session.availableCommands || []}
-				autoMentionEnabled={settings.autoMentionActiveNote}
+				autoMentionEnabled={false}
 				restoredMessage={restoredMessage}
 				mentions={mentions}
 				slashCommands={slashCommands}
 				autoMention={autoMention}
 				plugin={plugin}
 				view={view}
-				onSendMessage={handleSendWithInstructions}
+				onSendMessage={handleSendMessage}
 				onStopGeneration={handleStopGeneration}
 				onRestoredMessageConsumed={handleRestoredMessageConsumed}
 				modes={session.modes}

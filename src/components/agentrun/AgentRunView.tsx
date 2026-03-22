@@ -70,6 +70,7 @@ function AgentRunComponent({
 					view={view}
 					instructionsPath={agent.instructionsPath}
 					agentName={agent.name}
+					managedAgentId={agentId}
 				/>
 			</div>
 		</div>

@@ -38,8 +38,6 @@ export interface SendMessageOptions {
 	images?: ImagePromptContent[];
 	/** Attached file references (resource links) */
 	resourceLinks?: ResourceLinkPromptContent[];
-	/** Extra context prepended to agent content only (not shown in UI) */
-	contextPrefix?: string;
 }
 
 /**
@@ -613,8 +611,7 @@ export function useChat(
 						false,
 					maxNoteLength: settingsContext.maxNoteLength,
 					maxSelectionLength: settingsContext.maxSelectionLength,
-					contextPrefix: options.contextPrefix,
-				},
+					},
 				vaultAccess,
 				mentionService,
 			);

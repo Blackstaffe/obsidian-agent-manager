@@ -38,6 +38,9 @@ export interface SessionHistoryContentProps {
 	/** Whether debug mode is enabled (shows manual input form) */
 	debugMode: boolean;
 
+	/** Simplified mode — hides filter checkboxes, banners, and debug form (used by agent manager) */
+	simplified?: boolean;
+
 	/** Callback when a session is restored */
 	onRestoreSession: (sessionId: string, cwd: string) => Promise<void>;
 	/** Callback when a session is forked (create new branch) */
@@ -316,6 +319,7 @@ export function SessionHistoryContent({
 	localSessionIds,
 	isAgentReady,
 	debugMode,
+	simplified = false,
 	onRestoreSession,
 	onForkSession,
 	onDeleteSession,
@@ -371,7 +375,7 @@ export function SessionHistoryContent({
 	return (
 		<>
 			{/* Debug form */}
-			{debugMode && (
+			{!simplified && debugMode && (
 				<DebugForm
 					currentCwd={currentCwd}
 					onRestoreSession={onRestoreSession}
@@ -381,14 +385,14 @@ export function SessionHistoryContent({
 			)}
 
 			{/* Warning banner for agents that don't support restoration */}
-			{!canPerformAnyOperation && (
+			{!simplified && !canPerformAnyOperation && (
 				<div className="agent-manager-session-history-warning-banner">
 					<p>This agent does not support session restoration.</p>
 				</div>
 			)}
 
 			{/* Local sessions banner */}
-			{(isUsingLocalSessions || !canPerformAnyOperation) && (
+			{!simplified && (isUsingLocalSessions || !canPerformAnyOperation) && (
 				<div className="agent-manager-session-history-local-banner">
 					<span>These sessions are saved in the plugin.</span>
 				</div>
@@ -400,17 +404,19 @@ export function SessionHistoryContent({
 					<p className="agent-manager-session-history-empty-text">
 						Session list is not available for this agent.
 					</p>
-					<p className="agent-manager-session-history-empty-text">
-						Enable Debug Mode in settings to manually enter session
-						IDs.
-					</p>
+					{!simplified && (
+						<p className="agent-manager-session-history-empty-text">
+							Enable Debug Mode in settings to manually enter session
+							IDs.
+						</p>
+					)}
 				</div>
 			)}
 
 			{canShowList && (
 				<>
-					{/* Filter toggles - only for agent session/list */}
-					{canList && !isUsingLocalSessions && (
+					{/* Filter toggles - only for agent session/list, hidden in simplified mode */}
+					{!simplified && canList && !isUsingLocalSessions && (
 						<div className="agent-manager-session-history-filter">
 							<label className="agent-manager-session-history-filter-label">
 								<input

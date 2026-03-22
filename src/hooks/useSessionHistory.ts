@@ -1,11 +1,7 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import type { IAgentManager } from "../domain/ports/agent-manager.port";
 import type { ISettingsAccess } from "../domain/ports/settings-access.port";
-import type {
-	SessionInfo,
-	ListSessionsResult,
-	SavedSessionInfo,
-} from "../domain/models/session-info";
+import type { SessionInfo } from "../domain/models/session-info";
 import type {
 	ChatSession,
 	SessionModeState,
@@ -67,6 +63,8 @@ export interface UseSessionHistoryOptions {
 	settingsAccess: ISettingsAccess;
 	/** Working directory (vault path) for session operations */
 	cwd: string;
+	/** Managed agent UUID — scopes sessions to a specific process */
+	managedAgentId?: string;
 	/** Callback invoked when a session is loaded/resumed/forked */
 	onSessionLoad: SessionLoadCallback;
 	/** Callback invoked when messages should be restored from local storage */
@@ -170,50 +168,6 @@ export interface UseSessionHistoryReturn {
 	invalidateCache: () => void;
 }
 
-/**
- * Cache entry for session list.
- */
-interface SessionCache {
-	sessions: SessionInfo[];
-	nextCursor?: string;
-	cwd?: string;
-	timestamp: number;
-}
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-/** Cache expiry time in milliseconds (5 minutes) */
-const CACHE_EXPIRY_MS = 5 * 60 * 1000;
-
-/**
- * Merge agent sessions with locally saved titles.
- * Prefers local titles over agent-provided titles for better UX.
- *
- * Some agents return poor quality titles (e.g., "ACP Session {id}" or
- * system prompt text), so we prefer locally saved titles when available.
- *
- * @param agentSessions - Sessions from agent's session/list
- * @param localSessions - Locally saved session metadata
- * @returns Sessions with local titles merged in
- */
-function mergeWithLocalTitles(
-	agentSessions: SessionInfo[],
-	localSessions: SavedSessionInfo[],
-): SessionInfo[] {
-	// Create a map for O(1) lookup
-	const localMap = new Map(localSessions.map((s) => [s.sessionId, s]));
-
-	return agentSessions.map((s) => {
-		const local = localMap.get(s.sessionId);
-		return {
-			...s,
-			title: local?.title ?? s.title,
-		};
-	});
-}
-
 // ============================================================================
 // Hook Implementation
 // ============================================================================
@@ -238,11 +192,15 @@ export function useSessionHistory(
 		session,
 		settingsAccess,
 		cwd,
+		managedAgentId,
 		onSessionLoad,
 		onMessagesRestore,
 		onLoadStart,
 		onLoadEnd,
 	} = options;
+
+	// For filtering: managed agent sessions use their ID, regular chat excludes managed sessions
+	const sessionFilter = managedAgentId ?? null;
 
 	// Derive capability flags from session.agentCapabilities
 	const capabilities: SessionCapabilityFlags = useMemo(
@@ -254,213 +212,53 @@ export function useSessionHistory(
 	const [sessions, setSessions] = useState<SessionInfo[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
 	const [localSessionIds, setLocalSessionIds] = useState<Set<string>>(
 		new Set(),
 	);
 
-	// Cache reference (not state to avoid re-renders)
-	const cacheRef = useRef<SessionCache | null>(null);
-	const currentCwdRef = useRef<string | undefined>(undefined);
+	/** No-op — cache is no longer used since we always read from local storage */
+	const invalidateCache = useCallback(() => {}, []);
 
 	/**
-	 * Check if cache is valid.
-	 */
-	const isCacheValid = useCallback((cwd?: string): boolean => {
-		if (!cacheRef.current) return false;
-
-		// Check if cwd matches
-		if (cacheRef.current.cwd !== cwd) return false;
-
-		// Check if cache has expired
-		const age = Date.now() - cacheRef.current.timestamp;
-		return age < CACHE_EXPIRY_MS;
-	}, []);
-
-	/**
-	 * Invalidate the cache.
-	 */
-	const invalidateCache = useCallback(() => {
-		cacheRef.current = null;
-	}, []);
-
-	// Check if any restoration operation is available
-	const canPerformAnyOperation =
-		capabilities.canLoad || capabilities.canResume || capabilities.canFork;
-
-	/**
-	 * Fetch sessions list from agent or local storage.
-	 * Uses agent's session/list if supported, otherwise falls back to local storage.
-	 * For agents that don't support restoration, local sessions are used for deletion.
+	 * Fetch sessions from local storage.
+	 * Always uses plugin-side session storage (never agent's session/list).
 	 * Replaces existing sessions in state.
 	 */
 	const fetchSessions = useCallback(
 		async (cwd?: string) => {
-			// Use local sessions if:
-			// - Agent doesn't support session/list, OR
-			// - Agent doesn't support any restoration operation (for delete only)
-			const shouldUseLocalSessions =
-				!capabilities.canList || !canPerformAnyOperation;
+			// Always use locally-stored sessions — never call agent's session/list.
+			// This ensures sessions are properly scoped (managed agent vs regular chat)
+			// and the plugin is the single source of truth.
+			const localSessions = settingsAccess.getSavedSessions(
+				session.agentId,
+				cwd,
+				sessionFilter,
+			);
 
-			if (shouldUseLocalSessions) {
-				// Get locally saved sessions for this agent
-				const localSessions = settingsAccess.getSavedSessions(
-					session.agentId,
-					cwd,
-				);
+			// Convert SavedSessionInfo to SessionInfo format
+			const sessionInfos: SessionInfo[] = localSessions.map((s) => ({
+				sessionId: s.sessionId,
+				cwd: s.cwd,
+				title: s.title,
+				updatedAt: s.updatedAt,
+			}));
 
-				// Convert SavedSessionInfo to SessionInfo format
-				const sessionInfos: SessionInfo[] = localSessions.map((s) => ({
-					sessionId: s.sessionId,
-					cwd: s.cwd,
-					title: s.title,
-					updatedAt: s.updatedAt,
-				}));
-
-				setSessions(sessionInfos);
-				setLocalSessionIds(
-					new Set(localSessions.map((s) => s.sessionId)),
-				);
-				setNextCursor(undefined); // No pagination for local sessions
-				setError(null);
-				return;
-			}
-
-			// Check cache first
-			if (isCacheValid(cwd)) {
-				// Update localSessionIds even on cache hit
-				const localSessions = settingsAccess.getSavedSessions(
-					session.agentId,
-					cwd,
-				);
-				setLocalSessionIds(
-					new Set(localSessions.map((s) => s.sessionId)),
-				);
-				// Re-merge with local titles to pick up newly saved session titles
-				const sessionsWithLocalTitles = mergeWithLocalTitles(
-					cacheRef.current!.sessions,
-					localSessions,
-				);
-				setSessions(sessionsWithLocalTitles);
-				setNextCursor(cacheRef.current!.nextCursor);
-				setError(null);
-				return;
-			}
-
-			setLoading(true);
+			setSessions(sessionInfos);
+			setLocalSessionIds(
+				new Set(localSessions.map((s) => s.sessionId)),
+			);
 			setError(null);
-			currentCwdRef.current = cwd;
-
-			try {
-				const result: ListSessionsResult =
-					await agentClient.listSessions(cwd);
-
-				// Merge with local titles for better UX
-				// (some agents return poor quality titles)
-				const localSessions = settingsAccess.getSavedSessions(
-					session.agentId,
-					cwd,
-				);
-				const sessionsWithLocalTitles = mergeWithLocalTitles(
-					result.sessions,
-					localSessions,
-				);
-
-				// Update state
-				setSessions(sessionsWithLocalTitles);
-				setLocalSessionIds(
-					new Set(localSessions.map((s) => s.sessionId)),
-				);
-				setNextCursor(result.nextCursor);
-
-				// Update cache (with merged titles)
-				cacheRef.current = {
-					sessions: sessionsWithLocalTitles,
-					nextCursor: result.nextCursor,
-					cwd,
-					timestamp: Date.now(),
-				};
-			} catch (err) {
-				const errorMessage =
-					err instanceof Error ? err.message : String(err);
-				setError(`Failed to fetch sessions: ${errorMessage}`);
-				setSessions([]);
-				setNextCursor(undefined);
-			} finally {
-				setLoading(false);
-			}
 		},
-		[
-			agentClient,
-			capabilities.canList,
-			canPerformAnyOperation,
-			isCacheValid,
-			settingsAccess,
-			session.agentId,
-		],
+		[settingsAccess, session.agentId, sessionFilter],
 	);
 
 	/**
 	 * Load more sessions (pagination).
-	 * Appends to existing sessions list.
+	 * No-op for local sessions (all loaded at once).
 	 */
 	const loadMoreSessions = useCallback(async () => {
-		// Guard: Check if there's more to load
-		if (!nextCursor || !capabilities.canList) {
-			return;
-		}
-
-		setLoading(true);
-		setError(null);
-
-		try {
-			const result: ListSessionsResult = await agentClient.listSessions(
-				currentCwdRef.current,
-				nextCursor,
-			);
-
-			// Merge with local titles for better UX
-			// (some agents return poor quality titles)
-			const localSessions = settingsAccess.getSavedSessions(
-				session.agentId,
-				currentCwdRef.current,
-			);
-			const sessionsWithLocalTitles = mergeWithLocalTitles(
-				result.sessions,
-				localSessions,
-			);
-
-			// Append new sessions to existing list (use functional setState)
-			setSessions((prev) => [...prev, ...sessionsWithLocalTitles]);
-			setLocalSessionIds(new Set(localSessions.map((s) => s.sessionId)));
-			setNextCursor(result.nextCursor);
-
-			// Update cache with appended sessions (with merged titles)
-			if (cacheRef.current) {
-				cacheRef.current = {
-					...cacheRef.current,
-					sessions: [
-						...cacheRef.current.sessions,
-						...sessionsWithLocalTitles,
-					],
-					nextCursor: result.nextCursor,
-					timestamp: Date.now(),
-				};
-			}
-		} catch (err) {
-			const errorMessage =
-				err instanceof Error ? err.message : String(err);
-			setError(`Failed to load more sessions: ${errorMessage}`);
-		} finally {
-			setLoading(false);
-		}
-	}, [
-		agentClient,
-		capabilities.canList,
-		nextCursor,
-		settingsAccess,
-		session.agentId,
-	]);
+		// Local sessions are always loaded in full — no pagination needed
+	}, []);
 
 	/**
 	 * Restore a specific session by ID.
@@ -479,7 +277,7 @@ export function useSessionHistory(
 				if (capabilities.canLoad) {
 					// Check local messages first to decide whether to use them or agent replay
 					const localMessages =
-						await settingsAccess.loadSessionMessages(sessionId);
+						await settingsAccess.loadSessionMessages(sessionId, managedAgentId);
 
 					if (localMessages && onMessagesRestore) {
 						// Local messages available: ignore agent replay, restore from local
@@ -527,7 +325,7 @@ export function useSessionHistory(
 
 					// Resume doesn't return history, so restore from local storage
 					const localMessages =
-						await settingsAccess.loadSessionMessages(sessionId);
+						await settingsAccess.loadSessionMessages(sessionId, managedAgentId);
 					if (localMessages && onMessagesRestore) {
 						onMessagesRestore(localMessages);
 					}
@@ -579,7 +377,7 @@ export function useSessionHistory(
 
 				// Fork doesn't return history, so restore from original session's local storage
 				const localMessages =
-					await settingsAccess.loadSessionMessages(sessionId);
+					await settingsAccess.loadSessionMessages(sessionId, managedAgentId);
 				if (localMessages && onMessagesRestore) {
 					onMessagesRestore(localMessages);
 				}
@@ -610,6 +408,7 @@ export function useSessionHistory(
 						title: newTitle,
 						createdAt: now,
 						updatedAt: now,
+						managedAgentId,
 					});
 
 					// Save messages under new session ID for restore after restart
@@ -618,6 +417,7 @@ export function useSessionHistory(
 							result.sessionId,
 							session.agentId,
 							localMessages,
+							managedAgentId,
 						);
 					}
 				}
@@ -691,9 +491,10 @@ export function useSessionHistory(
 				title,
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
+				managedAgentId,
 			});
 		},
-		[session.agentId, cwd, settingsAccess],
+		[session.agentId, cwd, managedAgentId, settingsAccess],
 	);
 
 	/**
@@ -713,28 +514,25 @@ export function useSessionHistory(
 				sessionId,
 				session.agentId,
 				messages,
+				managedAgentId,
 			);
 		},
-		[session.agentId, settingsAccess],
+		[session.agentId, managedAgentId, settingsAccess],
 	);
 
 	return {
 		sessions,
 		loading,
 		error,
-		hasMore: nextCursor !== undefined,
+		hasMore: false, // Local sessions are always loaded in full
 
 		// Capability flags
-		// Show session history UI if any session capability is available
-		canShowSessionHistory:
-			capabilities.canList ||
-			capabilities.canLoad ||
-			capabilities.canResume ||
-			capabilities.canFork,
+		// Always show session history (local sessions are always available)
+		canShowSessionHistory: true,
 		canRestore: capabilities.canLoad || capabilities.canResume,
 		canFork: capabilities.canFork,
-		canList: capabilities.canList,
-		isUsingLocalSessions: !capabilities.canList,
+		canList: true, // Always true — we always have local listing
+		isUsingLocalSessions: true, // Always use local sessions
 		localSessionIds,
 
 		// Methods
