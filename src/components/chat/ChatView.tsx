@@ -660,7 +660,7 @@ export class ChatView extends ItemView implements IChatViewContainer {
 	}
 
 	getIcon() {
-		return "bot-message-square";
+		return "bird";
 	}
 
 	/**

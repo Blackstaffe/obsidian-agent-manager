@@ -206,8 +206,8 @@ export default class AgentManagerPlugin extends Plugin {
 		this.registerView(VIEW_TYPE_CHAT, (leaf) => new ChatView(leaf, this));
 
 		const ribbonIconEl = this.addRibbonIcon(
-			"bot-message-square",
-			"Open agent client",
+			"bird",
+			"Open agent manager",
 			(_evt: MouseEvent) => {
 				void this.activateView();
 			},

@@ -268,7 +268,7 @@ function FloatingButtonComponent({ plugin }: FloatingButtonProps) {
 					<div
 						className="agent-manager-floating-button-fallback"
 						ref={(el) => {
-							if (el) setIcon(el, "bot-message-square");
+							if (el) setIcon(el, "bird");
 						}}
 					/>
 				)}
