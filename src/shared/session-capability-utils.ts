@@ -1,4 +1,4 @@
-import type { AgentCapabilities } from "../domain/ports/agent-client.port";
+import type { AgentCapabilities } from "../domain/ports/agent-manager.port";
 
 /**
  * Session capability flags for UI conditional rendering.

@@ -4,7 +4,7 @@ import type {
 	MessageContent,
 } from "../domain/models/chat-message";
 import type { SessionUpdate } from "../domain/models/session-update";
-import type { IAgentClient } from "../domain/ports/agent-client.port";
+import type { IAgentManager } from "../domain/ports/agent-manager.port";
 import type { IVaultAccess } from "../domain/ports/vault-access.port";
 import type { NoteMetadata } from "../domain/ports/vault-access.port";
 import type { AuthenticationMethod } from "../domain/models/chat-session";
@@ -225,7 +225,7 @@ function mergeToolCallContent(
  * @param settingsContext - Settings information (windowsWslMode)
  */
 export function useChat(
-	agentClient: IAgentClient,
+	agentClient: IAgentManager,
 	vaultAccess: IVaultAccess,
 	mentionService: IMentionService,
 	sessionContext: SessionContext,

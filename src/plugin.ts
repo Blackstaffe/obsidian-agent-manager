@@ -18,7 +18,7 @@ import {
 	createSettingsStore,
 	type SettingsStore,
 } from "./adapters/obsidian/settings-store.adapter";
-import { AgentClientSettingTab } from "./components/settings/AgentClientSettingTab";
+import { AgentManagerSettingTab } from "./components/settings/AgentManagerSettingTab";
 import { AcpAdapter } from "./adapters/acp/acp.adapter";
 import {
 	sanitizeArgs,
@@ -60,7 +60,7 @@ export type ChatViewLocation =
 	| "editor-tab"
 	| "editor-split";
 
-export interface AgentClientPluginSettings {
+export interface AgentManagerPluginSettings {
 	gemini: GeminiAgentSettings;
 	claude: ClaudeAgentSettings;
 	codex: CodexAgentSettings;
@@ -112,7 +112,7 @@ export interface AgentClientPluginSettings {
 	floatingButtonPosition: { x: number; y: number } | null;
 }
 
-const DEFAULT_SETTINGS: AgentClientPluginSettings = {
+const DEFAULT_SETTINGS: AgentManagerPluginSettings = {
 	claude: {
 		id: "claude-code-acp",
 		displayName: "Claude Code",
@@ -144,15 +144,15 @@ const DEFAULT_SETTINGS: AgentClientPluginSettings = {
 	debugMode: false,
 	nodePath: "",
 	exportSettings: {
-		defaultFolder: "Agent Client",
+		defaultFolder: "Agent Manager",
 		filenameTemplate: "agent_client_{date}_{time}",
 		autoExportOnNewChat: false,
 		autoExportOnCloseChat: false,
 		openFileAfterExport: true,
 		includeImages: true,
 		imageLocation: "obsidian",
-		imageCustomFolder: "Agent Client",
-		frontmatterTag: "agent-client",
+		imageCustomFolder: "Agent Manager",
+		frontmatterTag: "agent-manager",
 	},
 	windowsWslMode: false,
 	windowsWslDistribution: undefined,
@@ -176,8 +176,8 @@ const DEFAULT_SETTINGS: AgentClientPluginSettings = {
 	floatingButtonPosition: null,
 };
 
-export default class AgentClientPlugin extends Plugin {
-	settings: AgentClientPluginSettings;
+export default class AgentManagerPlugin extends Plugin {
+	settings: AgentManagerPluginSettings;
 	settingsStore!: SettingsStore;
 
 	/** Registry for all chat view containers (sidebar + floating) */
@@ -212,7 +212,7 @@ export default class AgentClientPlugin extends Plugin {
 				void this.activateView();
 			},
 		);
-		ribbonIconEl.addClass("agent-client-ribbon-icon");
+		ribbonIconEl.addClass("agent-manager-ribbon-icon");
 
 		this.addCommand({
 			id: "open-chat-view",
@@ -260,7 +260,7 @@ export default class AgentClientPlugin extends Plugin {
 			callback: () => {
 				if (!this.settings.enableFloatingChat) {
 					new Notice(
-						"[Agent Client] Floating chat is disabled in settings",
+						"[Agent Manager] Floating chat is disabled in settings",
 					);
 					return;
 				}
@@ -288,7 +288,7 @@ export default class AgentClientPlugin extends Plugin {
 			callback: () => {
 				if (!this.settings.enableFloatingChat) {
 					new Notice(
-						"[Agent Client] Floating chat is disabled in settings",
+						"[Agent Manager] Floating chat is disabled in settings",
 					);
 					return;
 				}
@@ -318,7 +318,7 @@ export default class AgentClientPlugin extends Plugin {
 			},
 		});
 
-		this.addSettingTab(new AgentClientSettingTab(this.app, this));
+		this.addSettingTab(new AgentManagerSettingTab(this.app, this));
 
 		// Mount floating button (always present; visibility controlled by settings inside component)
 		this.floatingButton = new FloatingButtonContainer(this);
@@ -337,7 +337,7 @@ export default class AgentClientPlugin extends Plugin {
 				for (const [viewId, adapter] of this._adapters) {
 					adapter.disconnect().catch((error) => {
 						console.warn(
-							`[AgentClient] Quit cleanup error for view ${viewId}:`,
+							`[AgentManager] Quit cleanup error for view ${viewId}:`,
 							error,
 						);
 					});
@@ -390,7 +390,7 @@ export default class AgentClientPlugin extends Plugin {
 				await adapter.disconnect();
 			} catch (error) {
 				console.warn(
-					`[AgentClient] Failed to disconnect adapter for view ${viewId}:`,
+					`[AgentManager] Failed to disconnect adapter for view ${viewId}:`,
 					error,
 				);
 			}
@@ -458,7 +458,7 @@ export default class AgentClientPlugin extends Plugin {
 		if (viewContainerEl) {
 			window.setTimeout(() => {
 				const textarea = viewContainerEl.querySelector(
-					"textarea.agent-client-chat-input-textarea",
+					"textarea.agent-manager-chat-input-textarea",
 				);
 				if (textarea instanceof HTMLTextAreaElement) {
 					textarea.focus();
@@ -542,7 +542,7 @@ export default class AgentClientPlugin extends Plugin {
 	async openNewChatViewWithAgent(agentId: string): Promise<void> {
 		const leaf = this.createNewChatLeaf(true);
 		if (!leaf) {
-			console.warn("[AgentClient] Failed to create new leaf");
+			console.warn("[AgentManager] Failed to create new leaf");
 			return;
 		}
 
@@ -559,7 +559,7 @@ export default class AgentClientPlugin extends Plugin {
 		if (viewContainerEl) {
 			window.setTimeout(() => {
 				const textarea = viewContainerEl.querySelector(
-					"textarea.agent-client-chat-input-textarea",
+					"textarea.agent-manager-chat-input-textarea",
 				);
 				if (textarea instanceof HTMLTextAreaElement) {
 					textarea.focus();
@@ -619,7 +619,7 @@ export default class AgentClientPlugin extends Plugin {
 	 */
 	expandFloatingChat(viewId: string): void {
 		window.dispatchEvent(
-			new CustomEvent("agent-client:expand-floating-chat", {
+			new CustomEvent("agent-manager:expand-floating-chat", {
 				detail: { viewId },
 			}),
 		);
@@ -661,7 +661,7 @@ export default class AgentClientPlugin extends Plugin {
 		// Trigger new chat with specific agent
 		// Pass agentId so ChatComponent knows to force new session even if empty
 		this.app.workspace.trigger(
-			"agent-client:new-chat-requested" as "quit",
+			"agent-manager:new-chat-requested" as "quit",
 			agentId,
 		);
 	}
@@ -697,7 +697,7 @@ export default class AgentClientPlugin extends Plugin {
 					await this.activateView();
 				}
 				this.app.workspace.trigger(
-					"agent-client:approve-active-permission" as "quit",
+					"agent-manager:approve-active-permission" as "quit",
 					this.lastActiveChatViewId,
 				);
 			},
@@ -716,7 +716,7 @@ export default class AgentClientPlugin extends Plugin {
 					await this.activateView();
 				}
 				this.app.workspace.trigger(
-					"agent-client:reject-active-permission" as "quit",
+					"agent-manager:reject-active-permission" as "quit",
 					this.lastActiveChatViewId,
 				);
 			},
@@ -735,7 +735,7 @@ export default class AgentClientPlugin extends Plugin {
 					await this.activateView();
 				}
 				this.app.workspace.trigger(
-					"agent-client:toggle-auto-mention" as "quit",
+					"agent-manager:toggle-auto-mention" as "quit",
 					this.lastActiveChatViewId,
 				);
 			},
@@ -746,7 +746,7 @@ export default class AgentClientPlugin extends Plugin {
 			name: "Cancel current message",
 			callback: () => {
 				this.app.workspace.trigger(
-					"agent-client:cancel-message" as "quit",
+					"agent-manager:cancel-message" as "quit",
 					this.lastActiveChatViewId,
 				);
 			},
@@ -757,7 +757,7 @@ export default class AgentClientPlugin extends Plugin {
 			name: "Export chat",
 			callback: () => {
 				this.app.workspace.trigger(
-					"agent-client:export-chat" as "quit",
+					"agent-manager:export-chat" as "quit",
 					this.lastActiveChatViewId,
 				);
 			},
@@ -802,7 +802,7 @@ export default class AgentClientPlugin extends Plugin {
 	private broadcastPrompt(): void {
 		const allViews = this.viewRegistry.getAll();
 		if (allViews.length === 0) {
-			new Notice("[Agent Client] No chat views open");
+			new Notice("[Agent Manager] No chat views open");
 			return;
 		}
 
@@ -813,14 +813,14 @@ export default class AgentClientPlugin extends Plugin {
 			!inputState ||
 			(inputState.text.trim() === "" && inputState.files.length === 0)
 		) {
-			new Notice("[Agent Client] No prompt to broadcast");
+			new Notice("[Agent Manager] No prompt to broadcast");
 			return;
 		}
 
 		const focusedId = this.viewRegistry.getFocusedId();
 		const targetViews = allViews.filter((v) => v.viewId !== focusedId);
 		if (targetViews.length === 0) {
-			new Notice("[Agent Client] No other chat views to broadcast to");
+			new Notice("[Agent Manager] No other chat views to broadcast to");
 			return;
 		}
 
@@ -835,13 +835,13 @@ export default class AgentClientPlugin extends Plugin {
 	private async broadcastSend(): Promise<void> {
 		const allViews = this.viewRegistry.getAll();
 		if (allViews.length === 0) {
-			new Notice("[Agent Client] No chat views open");
+			new Notice("[Agent Manager] No chat views open");
 			return;
 		}
 
 		const sendableViews = allViews.filter((v) => v.canSend());
 		if (sendableViews.length === 0) {
-			new Notice("[Agent Client] No views ready to send");
+			new Notice("[Agent Manager] No views ready to send");
 			return;
 		}
 
@@ -854,12 +854,12 @@ export default class AgentClientPlugin extends Plugin {
 	private async broadcastCancel(): Promise<void> {
 		const allViews = this.viewRegistry.getAll();
 		if (allViews.length === 0) {
-			new Notice("[Agent Client] No chat views open");
+			new Notice("[Agent Manager] No chat views open");
 			return;
 		}
 
 		await Promise.allSettled(allViews.map((v) => v.cancelOperation()));
-		new Notice("[Agent Client] Cancel broadcast to all views");
+		new Notice("[Agent Manager] Cancel broadcast to all views");
 	}
 
 	async loadSettings() {
@@ -1231,7 +1231,7 @@ export default class AgentClientPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	async saveSettingsAndNotify(nextSettings: AgentClientPluginSettings) {
+	async saveSettingsAndNotify(nextSettings: AgentManagerPluginSettings) {
 		this.settings = nextSettings;
 		await this.saveData(this.settings);
 		this.settingsStore.set(this.settings);
@@ -1242,7 +1242,7 @@ export default class AgentClientPlugin extends Plugin {
 	 */
 	private async fetchLatestStable(): Promise<string | null> {
 		const response = await requestUrl({
-			url: "https://api.github.com/repos/RAIT-09/obsidian-agent-client/releases/latest",
+			url: "https://api.github.com/repos/RAIT-09/obsidian-agent-manager/releases/latest",
 		});
 		const data = response.json as { tag_name?: string };
 		return data.tag_name ? semver.clean(data.tag_name) : null;
@@ -1253,7 +1253,7 @@ export default class AgentClientPlugin extends Plugin {
 	 */
 	private async fetchLatestPrerelease(): Promise<string | null> {
 		const response = await requestUrl({
-			url: "https://api.github.com/repos/RAIT-09/obsidian-agent-client/releases",
+			url: "https://api.github.com/repos/RAIT-09/obsidian-agent-manager/releases",
 		});
 		const releases = response.json as Array<{
 			tag_name: string;
@@ -1295,7 +1295,7 @@ export default class AgentClientPlugin extends Plugin {
 					? latestStable
 					: latestPrerelease;
 				new Notice(
-					`[Agent Client] Update available: v${newestVersion}`,
+					`[Agent Manager] Update available: v${newestVersion}`,
 				);
 				return true;
 			}
@@ -1303,7 +1303,7 @@ export default class AgentClientPlugin extends Plugin {
 			// Stable version user: check stable only
 			const latestStable = await this.fetchLatestStable();
 			if (latestStable && semver.gt(latestStable, currentVersion)) {
-				new Notice(`[Agent Client] Update available: v${latestStable}`);
+				new Notice(`[Agent Manager] Update available: v${latestStable}`);
 				return true;
 			}
 		}

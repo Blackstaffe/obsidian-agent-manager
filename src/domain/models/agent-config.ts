@@ -87,6 +87,6 @@ export interface CodexAgentSettings extends BaseAgentSettings {
  * Configuration for custom ACP-compatible agents.
  *
  * Uses only the base settings, allowing users to configure
- * any agent that implements the Agent Client Protocol.
+ * any agent that implements the Agent Manager Protocol.
  */
 export type CustomAgentSettings = BaseAgentSettings;

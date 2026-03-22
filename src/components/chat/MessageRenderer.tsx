@@ -4,12 +4,12 @@ import type {
 	MessageContent,
 } from "../../domain/models/chat-message";
 import type { IAcpClient } from "../../adapters/acp/acp.adapter";
-import type AgentClientPlugin from "../../plugin";
+import type AgentManagerPlugin from "../../plugin";
 import { MessageContentRenderer } from "./MessageContentRenderer";
 
 interface MessageRendererProps {
 	message: ChatMessage;
-	plugin: AgentClientPlugin;
+	plugin: AgentManagerPlugin;
 	acpClient?: IAcpClient;
 	/** Callback to approve a permission request */
 	onApprovePermission?: (
@@ -69,7 +69,7 @@ export function MessageRenderer({
 
 	return (
 		<div
-			className={`agent-client-message-renderer ${message.role === "user" ? "agent-client-message-user" : "agent-client-message-assistant"}`}
+			className={`agent-manager-message-renderer ${message.role === "user" ? "agent-manager-message-user" : "agent-manager-message-assistant"}`}
 		>
 			{groups.map((group, idx) => {
 				if (group.type === "attachments") {
@@ -77,7 +77,7 @@ export function MessageRenderer({
 					return (
 						<div
 							key={idx}
-							className="agent-client-message-images-strip"
+							className="agent-manager-message-images-strip"
 						>
 							{group.items.map((content, imgIdx) => (
 								<MessageContentRenderer

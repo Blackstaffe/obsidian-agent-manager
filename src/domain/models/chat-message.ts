@@ -1,7 +1,7 @@
 /**
  * Domain Models for Chat Messages
  *
- * These types are independent of the Agent Client Protocol (ACP) library.
+ * These types are independent of the Agent Manager Protocol (ACP) library.
  * They represent the core domain concepts of this plugin and remain stable
  * even if the underlying protocol changes. The Adapter layer handles conversion
  * between these domain types and ACP protocol types.

@@ -4,7 +4,7 @@ import type { ChatSession } from "../domain/models/chat-session";
 import { ChatExporter } from "../shared/chat-exporter";
 import { getLogger } from "../shared/logger";
 import { Notice } from "obsidian";
-import type AgentClientPlugin from "../plugin";
+import type AgentManagerPlugin from "../plugin";
 
 // ============================================================================
 // Types
@@ -60,7 +60,7 @@ export interface UseAutoExportReturn {
  *
  * @param plugin - Plugin instance for settings and exporter
  */
-export function useAutoExport(plugin: AgentClientPlugin): UseAutoExportReturn {
+export function useAutoExport(plugin: AgentManagerPlugin): UseAutoExportReturn {
 	const logger = getLogger();
 
 	/**
@@ -139,7 +139,7 @@ export function useAutoExport(plugin: AgentClientPlugin): UseAutoExportReturn {
 
 				if (filePath) {
 					// Show success notification
-					new Notice(`[Agent Client] Chat exported to ${filePath}`);
+					new Notice(`[Agent Manager] Chat exported to ${filePath}`);
 
 					// Log success
 					const context =
@@ -148,7 +148,7 @@ export function useAutoExport(plugin: AgentClientPlugin): UseAutoExportReturn {
 				}
 			} catch {
 				// Show error notification
-				new Notice("[Agent Client] Failed to export chat");
+				new Notice("[Agent Manager] Failed to export chat");
 				// Error already logged in exportChat
 			}
 		},

@@ -1,11 +1,11 @@
 /**
  * Domain Models for Agent Errors
  *
- * This module defines error types for the Agent Client plugin:
+ * This module defines error types for the Agent Manager plugin:
  * - AcpError: ACP protocol errors (JSON-RPC based)
  * - ProcessError: Node.js process-level errors
  *
- * These types are based on the ACP (Agent Client Protocol) specification
+ * These types are based on the ACP (Agent Manager Protocol) specification
  * and JSON-RPC 2.0 error object specification.
  */
 

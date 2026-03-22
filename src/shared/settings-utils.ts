@@ -1,6 +1,6 @@
 import type { AgentEnvVar, CustomAgentSettings } from "../plugin";
 import type { BaseAgentSettings } from "../domain/models/agent-config";
-import type { AgentConfig } from "../domain/ports/agent-client.port";
+import type { AgentConfig } from "../domain/ports/agent-manager.port";
 
 export const sanitizeArgs = (value: unknown): string[] => {
 	if (Array.isArray(value)) {
@@ -115,7 +115,7 @@ export const ensureUniqueCustomAgentIds = (
  * Convert BaseAgentSettings to AgentConfig for process execution.
  *
  * Transforms the storage format (BaseAgentSettings) to the runtime format (AgentConfig)
- * needed by IAgentClient.initialize().
+ * needed by IAgentManager.initialize().
  *
  * @param settings - Agent settings from plugin configuration
  * @param workingDirectory - Working directory for the agent session

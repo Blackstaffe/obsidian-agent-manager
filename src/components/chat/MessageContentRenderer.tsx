@@ -2,7 +2,7 @@ import * as React from "react";
 import { setIcon } from "obsidian";
 import type { MessageContent } from "../../domain/models/chat-message";
 import type { IAcpClient } from "../../adapters/acp/acp.adapter";
-import type AgentClientPlugin from "../../plugin";
+import type AgentManagerPlugin from "../../plugin";
 import { MarkdownTextRenderer } from "./MarkdownTextRenderer";
 import { CollapsibleThought } from "./CollapsibleThought";
 import { TerminalRenderer } from "./TerminalRenderer";
@@ -11,7 +11,7 @@ import { ToolCallRenderer } from "./ToolCallRenderer";
 
 interface MessageContentRendererProps {
 	content: MessageContent;
-	plugin: AgentClientPlugin;
+	plugin: AgentManagerPlugin;
 	messageId?: string;
 	messageRole?: "user" | "assistant";
 	acpClient?: IAcpClient;
@@ -65,18 +65,18 @@ export function MessageContentRenderer({
 		case "plan": {
 			const showEmojis = plugin.settings.displaySettings.showEmojis;
 			return (
-				<div className="agent-client-message-plan">
-					<div className="agent-client-message-plan-title">
+				<div className="agent-manager-message-plan">
+					<div className="agent-manager-message-plan-title">
 						{showEmojis && "📋 "}Plan
 					</div>
 					{content.entries.map((entry, idx) => (
 						<div
 							key={idx}
-							className={`agent-client-message-plan-entry agent-client-plan-status-${entry.status}`}
+							className={`agent-manager-message-plan-entry agent-manager-plan-status-${entry.status}`}
 						>
 							{showEmojis && (
 								<span
-									className={`agent-client-message-plan-entry-icon agent-client-status-${entry.status}`}
+									className={`agent-manager-message-plan-entry-icon agent-manager-status-${entry.status}`}
 								>
 									{entry.status === "completed"
 										? "✓"
@@ -103,25 +103,25 @@ export function MessageContentRenderer({
 
 		case "image":
 			return (
-				<div className="agent-client-message-image">
+				<div className="agent-manager-message-image">
 					<img
 						src={`data:${content.mimeType};base64,${content.data}`}
 						alt="Attached image"
-						className="agent-client-message-image-thumbnail"
+						className="agent-manager-message-image-thumbnail"
 					/>
 				</div>
 			);
 
 		case "resource_link":
 			return (
-				<div className="agent-client-message-resource-link">
+				<div className="agent-manager-message-resource-link">
 					<span
-						className="agent-client-message-resource-link-icon"
+						className="agent-manager-message-resource-link-icon"
 						ref={(el) => {
 							if (el) setIcon(el, "file");
 						}}
 					/>
-					<span className="agent-client-message-resource-link-name">
+					<span className="agent-manager-message-resource-link-name">
 						{content.name}
 					</span>
 				</div>

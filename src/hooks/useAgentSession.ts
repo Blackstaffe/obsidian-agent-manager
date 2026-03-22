@@ -10,9 +10,9 @@ import type {
 } from "../domain/models/chat-session";
 import type { SessionConfigOption } from "../domain/models/session-update";
 import { flattenConfigSelectOptions } from "../shared/config-option-utils";
-import type { IAgentClient } from "../domain/ports/agent-client.port";
+import type { IAgentManager } from "../domain/ports/agent-manager.port";
 import type { ISettingsAccess } from "../domain/ports/settings-access.port";
-import type { AgentClientPluginSettings } from "../plugin";
+import type { AgentManagerPluginSettings } from "../plugin";
 import type {
 	BaseAgentSettings,
 	ClaudeAgentSettings,
@@ -181,7 +181,7 @@ export interface UseAgentSessionReturn {
 /**
  * Get the default agent ID from settings (for new views).
  */
-function getDefaultAgentId(settings: AgentClientPluginSettings): string {
+function getDefaultAgentId(settings: AgentManagerPluginSettings): string {
 	return settings.defaultAgentId || settings.claude.id;
 }
 
@@ -189,7 +189,7 @@ function getDefaultAgentId(settings: AgentClientPluginSettings): string {
  * Get list of all available agents from settings.
  */
 function getAvailableAgentsFromSettings(
-	settings: AgentClientPluginSettings,
+	settings: AgentManagerPluginSettings,
 ): AgentInfo[] {
 	return [
 		{
@@ -215,7 +215,7 @@ function getAvailableAgentsFromSettings(
  * Get the currently active agent information from settings.
  */
 function getCurrentAgent(
-	settings: AgentClientPluginSettings,
+	settings: AgentManagerPluginSettings,
 	agentId?: string,
 ): AgentInfo {
 	const activeId = agentId || getDefaultAgentId(settings);
@@ -236,7 +236,7 @@ function getCurrentAgent(
  * Find agent settings by ID from plugin settings.
  */
 function findAgentSettings(
-	settings: AgentClientPluginSettings,
+	settings: AgentManagerPluginSettings,
 	agentId: string,
 ): BaseAgentSettings | null {
 	if (agentId === settings.claude.id) {
@@ -259,7 +259,7 @@ function findAgentSettings(
  * Build AgentConfig with API key injection for known agents.
  */
 function buildAgentConfigWithApiKey(
-	settings: AgentClientPluginSettings,
+	settings: AgentManagerPluginSettings,
 	agentSettings: BaseAgentSettings,
 	agentId: string,
 	workingDirectory: string,
@@ -345,7 +345,7 @@ function createInitialSession(
  * @param initialAgentId - Optional initial agent ID (from view persistence)
  */
 export function useAgentSession(
-	agentClient: IAgentClient,
+	agentClient: IAgentManager,
 	settingsAccess: ISettingsAccess,
 	workingDirectory: string,
 	initialAgentId?: string,

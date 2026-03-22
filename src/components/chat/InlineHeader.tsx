@@ -129,31 +129,31 @@ export function InlineHeader({
 
 	return (
 		<div
-			className={`agent-client-inline-header agent-client-inline-header-${variant}`}
+			className={`agent-manager-inline-header agent-manager-inline-header-${variant}`}
 		>
-			<div className="agent-client-inline-header-main">
+			<div className="agent-manager-inline-header-main">
 				{availableAgents.length > 1 ? (
-					<div className="agent-client-agent-selector">
+					<div className="agent-manager-agent-selector">
 						<div ref={agentDropdownRef} />
 						<span
-							className="agent-client-agent-selector-icon"
+							className="agent-manager-agent-selector-icon"
 							ref={(el) => {
 								if (el) setIcon(el, "chevron-down");
 							}}
 						/>
 					</div>
 				) : (
-					<span className="agent-client-agent-label">
+					<span className="agent-manager-agent-label">
 						{agentLabel}
 					</span>
 				)}
 			</div>
 			{isUpdateAvailable && (
-				<p className="agent-client-chat-view-header-update">
+				<p className="agent-manager-chat-view-header-update">
 					Plugin update available!
 				</p>
 			)}
-			<div className="agent-client-inline-header-actions">
+			<div className="agent-manager-inline-header-actions">
 				<HeaderButton
 					iconName="plus"
 					tooltip="New session"

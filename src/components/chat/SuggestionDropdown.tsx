@@ -1,7 +1,7 @@
 import * as React from "react";
 const { useRef, useEffect } = React;
 import { getLogger } from "../../shared/logger";
-import type AgentClientPlugin from "../../plugin";
+import type AgentManagerPlugin from "../../plugin";
 import type { IChatViewHost } from "./types";
 import type { NoteMetadata } from "../../domain/ports/vault-access.port";
 import type { SlashCommand } from "../../domain/models/chat-session";
@@ -34,7 +34,7 @@ interface SuggestionDropdownProps {
 	onClose: () => void;
 
 	/** Plugin instance for logging */
-	plugin: AgentClientPlugin;
+	plugin: AgentManagerPlugin;
 
 	/** View instance for event registration */
 	view: IChatViewHost;
@@ -108,16 +108,16 @@ export function SuggestionDropdown({
 			return (
 				<div
 					key={note.path}
-					className={`agent-client-mention-dropdown-item ${isSelected ? "agent-client-selected" : ""} ${hasBorder ? "agent-client-has-border" : ""}`}
+					className={`agent-manager-mention-dropdown-item ${isSelected ? "agent-manager-selected" : ""} ${hasBorder ? "agent-manager-has-border" : ""}`}
 					onClick={() => onSelect(note)}
 					onMouseEnter={() => {
 						// Could update selected index on hover
 					}}
 				>
-					<div className="agent-client-mention-dropdown-item-name">
+					<div className="agent-manager-mention-dropdown-item-name">
 						{note.name}
 					</div>
-					<div className="agent-client-mention-dropdown-item-path">
+					<div className="agent-manager-mention-dropdown-item-path">
 						{note.path}
 					</div>
 				</div>
@@ -128,16 +128,16 @@ export function SuggestionDropdown({
 			return (
 				<div
 					key={command.name}
-					className={`agent-client-mention-dropdown-item ${isSelected ? "agent-client-selected" : ""} ${hasBorder ? "agent-client-has-border" : ""}`}
+					className={`agent-manager-mention-dropdown-item ${isSelected ? "agent-manager-selected" : ""} ${hasBorder ? "agent-manager-has-border" : ""}`}
 					onClick={() => onSelect(command)}
 					onMouseEnter={() => {
 						// Could update selected index on hover
 					}}
 				>
-					<div className="agent-client-mention-dropdown-item-name">
+					<div className="agent-manager-mention-dropdown-item-name">
 						/{command.name}
 					</div>
-					<div className="agent-client-mention-dropdown-item-path">
+					<div className="agent-manager-mention-dropdown-item-path">
 						{command.description}
 						{command.hint && ` (${command.hint})`}
 					</div>
@@ -147,7 +147,7 @@ export function SuggestionDropdown({
 	};
 
 	return (
-		<div ref={dropdownRef} className="agent-client-mention-dropdown">
+		<div ref={dropdownRef} className="agent-manager-mention-dropdown">
 			{items.map((item, index) => renderItem(item, index))}
 		</div>
 	);

@@ -3,7 +3,7 @@ const { useState, useRef, useEffect, useCallback, useMemo } = React;
 import { createRoot, type Root } from "react-dom/client";
 import { Notice } from "obsidian";
 
-import type AgentClientPlugin from "../../plugin";
+import type AgentManagerPlugin from "../../plugin";
 import type {
 	IChatViewContainer,
 	ChatViewType,
@@ -70,17 +70,17 @@ export class FloatingViewContainer implements IChatViewContainer {
 	readonly viewType: ChatViewType = "floating";
 	readonly viewId: string;
 
-	private plugin: AgentClientPlugin;
+	private plugin: AgentManagerPlugin;
 	private root: Root | null = null;
 	private containerEl: HTMLElement;
 	private callbacks: FloatingViewCallbacks | null = null;
 
-	constructor(plugin: AgentClientPlugin, instanceId: string) {
+	constructor(plugin: AgentManagerPlugin, instanceId: string) {
 		this.plugin = plugin;
 		// viewId format: "floating-chat-{instanceId}" to match useChatController's adapter key
 		this.viewId = `floating-chat-${instanceId}`;
 		this.containerEl = document.body.createDiv({
-			cls: "agent-client-floating-view-root",
+			cls: "agent-manager-floating-view-root",
 		});
 	}
 
@@ -184,7 +184,7 @@ export class FloatingViewContainer implements IChatViewContainer {
 // ============================================================
 
 interface FloatingChatComponentProps {
-	plugin: AgentClientPlugin;
+	plugin: AgentManagerPlugin;
 	viewId: string; // Full viewId passed from FloatingViewContainer
 	initialExpanded?: boolean;
 	initialPosition?: { x: number; y: number };
@@ -348,12 +348,12 @@ function FloatingChatComponent({
 		};
 
 		window.addEventListener(
-			"agent-client:expand-floating-chat" as never,
+			"agent-manager:expand-floating-chat" as never,
 			handleExpandRequest as EventListener,
 		);
 		return () => {
 			window.removeEventListener(
-				"agent-client:expand-floating-chat" as never,
+				"agent-manager:expand-floating-chat" as never,
 				handleExpandRequest as EventListener,
 			);
 		};
@@ -527,7 +527,7 @@ function FloatingChatComponent({
 					// Focus after next render (expansion may need a frame)
 					requestAnimationFrame(() => {
 						const textarea = containerRef.current?.querySelector(
-							"textarea.agent-client-chat-input-textarea",
+							"textarea.agent-manager-chat-input-textarea",
 						);
 						if (textarea instanceof HTMLTextAreaElement) {
 							textarea.focus();
@@ -575,7 +575,7 @@ function FloatingChatComponent({
 					callback: CustomEventCallback,
 				) => ReturnType<typeof workspace.on>;
 			}
-		).on("agent-client:toggle-auto-mention", (targetViewId?: string) => {
+		).on("agent-manager:toggle-auto-mention", (targetViewId?: string) => {
 			if (targetViewId && targetViewId !== viewId) return;
 			autoMention.toggle();
 		});
@@ -596,7 +596,7 @@ function FloatingChatComponent({
 					callback: (agentId?: string) => void,
 				) => ReturnType<typeof workspace.on>;
 			}
-		).on("agent-client:new-chat-requested", (agentId?: string) => {
+		).on("agent-manager:new-chat-requested", (agentId?: string) => {
 			// Only respond if we are the last active view
 			if (
 				plugin.lastActiveChatViewId &&
@@ -630,14 +630,14 @@ function FloatingChatComponent({
 				) => ReturnType<typeof workspace.on>;
 			}
 		).on(
-			"agent-client:approve-active-permission",
+			"agent-manager:approve-active-permission",
 			(targetViewId?: string) => {
 				if (targetViewId && targetViewId !== viewId) return;
 				void (async () => {
 					const success = await permission.approveActivePermission();
 					if (!success) {
 						new Notice(
-							"[Agent Client] No active permission request",
+							"[Agent Manager] No active permission request",
 						);
 					}
 				})();
@@ -652,14 +652,14 @@ function FloatingChatComponent({
 				) => ReturnType<typeof workspace.on>;
 			}
 		).on(
-			"agent-client:reject-active-permission",
+			"agent-manager:reject-active-permission",
 			(targetViewId?: string) => {
 				if (targetViewId && targetViewId !== viewId) return;
 				void (async () => {
 					const success = await permission.rejectActivePermission();
 					if (!success) {
 						new Notice(
-							"[Agent Client] No active permission request",
+							"[Agent Manager] No active permission request",
 						);
 					}
 				})();
@@ -673,7 +673,7 @@ function FloatingChatComponent({
 					callback: CustomEventCallback,
 				) => ReturnType<typeof workspace.on>;
 			}
-		).on("agent-client:cancel-message", (targetViewId?: string) => {
+		).on("agent-manager:cancel-message", (targetViewId?: string) => {
 			if (targetViewId && targetViewId !== viewId) return;
 			void handleStopGeneration();
 		});
@@ -685,7 +685,7 @@ function FloatingChatComponent({
 					callback: CustomEventCallback,
 				) => ReturnType<typeof workspace.on>;
 			}
-		).on("agent-client:export-chat", (targetViewId?: string) => {
+		).on("agent-manager:export-chat", (targetViewId?: string) => {
 			if (targetViewId && targetViewId !== viewId) return;
 			void handleExportChat();
 		});
@@ -736,7 +736,7 @@ function FloatingChatComponent({
 	return (
 		<div
 			ref={containerRef}
-			className="agent-client-floating-window"
+			className="agent-manager-floating-window"
 			style={{
 				left: position.x,
 				top: position.y,
@@ -745,7 +745,7 @@ function FloatingChatComponent({
 			}}
 		>
 			<div
-				className="agent-client-floating-header"
+				className="agent-manager-floating-header"
 				onMouseDown={onMouseDown}
 			>
 				<InlineHeader
@@ -766,8 +766,8 @@ function FloatingChatComponent({
 				/>
 			</div>
 
-			<div className="agent-client-floating-content">
-				<div className="agent-client-floating-messages-container">
+			<div className="agent-manager-floating-content">
+				<div className="agent-manager-floating-messages-container">
 					<ChatMessages
 						messages={messages}
 						isSending={isSending}
@@ -833,7 +833,7 @@ function FloatingChatComponent({
  * @returns The FloatingViewContainer instance
  */
 export function createFloatingChat(
-	plugin: AgentClientPlugin,
+	plugin: AgentManagerPlugin,
 	instanceId: string,
 	initialExpanded = false,
 	initialPosition?: { x: number; y: number },

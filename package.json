@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-agent-client",
+	"name": "obsidian-agent-manager",
 	"version": "0.9.1",
-	"description": "Use AI coding agents via the Agent Client Protocol directly inside Obsidian",
+	"description": "Use AI coding agents via the Agent Manager Protocol directly inside Obsidian",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",

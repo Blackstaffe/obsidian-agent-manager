@@ -1,4 +1,4 @@
-import type AgentClientPlugin from "../../plugin";
+import type AgentManagerPlugin from "../../plugin";
 import { getLogger } from "../../shared/logger";
 import type { PermissionOption } from "../../domain/models/chat-message";
 
@@ -11,7 +11,7 @@ interface PermissionRequestSectionProps {
 		isActive?: boolean;
 	};
 	toolCallId: string;
-	plugin: AgentClientPlugin;
+	plugin: AgentManagerPlugin;
 	/** Callback to approve a permission request */
 	onApprovePermission?: (
 		requestId: string,
@@ -38,13 +38,13 @@ export function PermissionRequestSection({
 	);
 
 	return (
-		<div className="agent-client-message-permission-request">
+		<div className="agent-manager-message-permission-request">
 			{isActive && !isSelected && !isCancelled && (
-				<div className="agent-client-message-permission-request-options">
+				<div className="agent-manager-message-permission-request-options">
 					{permissionRequest.options.map((option) => (
 						<button
 							key={option.optionId}
-							className={`agent-client-permission-option ${option.kind ? `agent-client-permission-kind-${option.kind}` : ""}`}
+							className={`agent-manager-permission-option ${option.kind ? `agent-manager-permission-kind-${option.kind}` : ""}`}
 							onClick={() => {
 								// Update local UI state immediately for feedback
 								if (onOptionSelected) {
@@ -70,12 +70,12 @@ export function PermissionRequestSection({
 				</div>
 			)}
 			{isSelected && selectedOption && (
-				<div className="agent-client-message-permission-request-result agent-client-selected">
+				<div className="agent-manager-message-permission-request-result agent-manager-selected">
 					{showEmojis && "✓ "}Selected: {selectedOption.name}
 				</div>
 			)}
 			{isCancelled && (
-				<div className="agent-client-message-permission-request-result agent-client-cancelled">
+				<div className="agent-manager-message-permission-request-result agent-manager-cancelled">
 					{showEmojis && "⚠ "}Cancelled: Permission request was
 					cancelled
 				</div>

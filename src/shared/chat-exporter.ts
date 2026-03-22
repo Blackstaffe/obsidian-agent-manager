@@ -1,4 +1,4 @@
-import type AgentClientPlugin from "../plugin";
+import type AgentManagerPlugin from "../plugin";
 import type {
 	ChatMessage,
 	MessageContent,
@@ -25,7 +25,7 @@ interface ConvertContext {
 export class ChatExporter {
 	private logger: Logger;
 
-	constructor(private plugin: AgentClientPlugin) {
+	constructor(private plugin: AgentManagerPlugin) {
 		this.logger = getLogger();
 	}
 
@@ -44,7 +44,7 @@ export class ChatExporter {
 			messages.length > 0 ? messages[0].timestamp : sessionCreatedAt;
 
 		const baseFileName = this.generateFileName(effectiveTimestamp);
-		const folderPath = settings.defaultFolder || "Agent Client";
+		const folderPath = settings.defaultFolder || "Agent Manager";
 
 		// Create folder if it doesn't exist
 		await this.ensureFolderExists(folderPath);
@@ -483,7 +483,7 @@ session_id: ${sessionId}${tagsLine}
 
 		if (imageLocation === "custom") {
 			// Save to custom folder
-			const folder = imageCustomFolder || "Agent Client";
+			const folder = imageCustomFolder || "Agent Manager";
 			await this.ensureFolderExists(folder);
 			attachmentPath = `${folder}/${imageFileName}`;
 

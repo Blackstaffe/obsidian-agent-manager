@@ -8,11 +8,11 @@
  * - Process mentions (@[[note]] syntax)
  * - Add auto-mention for active note
  * - Convert mentions to file paths
- * - Send prompt to agent via IAgentClient
+ * - Send prompt to agent via IAgentManager
  * - Handle authentication errors with retry logic
  */
 
-import type { IAgentClient } from "../domain/ports/agent-client.port";
+import type { IAgentManager } from "../domain/ports/agent-manager.port";
 import type {
 	IVaultAccess,
 	NoteMetadata,
@@ -564,7 +564,7 @@ This is what the user is currently focusing on.
  */
 export async function sendPreparedPrompt(
 	input: SendPreparedPromptInput,
-	agentClient: IAgentClient,
+	agentClient: IAgentManager,
 ): Promise<SendPromptResult> {
 	try {
 		await agentClient.sendPrompt(input.sessionId, input.agentContent);
@@ -604,7 +604,7 @@ async function handleSendError(
 	agentContent: PromptContent[],
 	displayContent: PromptContent[],
 	authMethods: AuthenticationMethod[],
-	agentClient: IAgentClient,
+	agentClient: IAgentManager,
 ): Promise<SendPromptResult> {
 	// Check for "empty response text" error - ignore silently
 	if (isEmptyResponseError(error)) {
@@ -668,7 +668,7 @@ async function retryWithAuthentication(
 	agentContent: PromptContent[],
 	displayContent: PromptContent[],
 	authMethodId: string,
-	agentClient: IAgentClient,
+	agentClient: IAgentManager,
 ): Promise<SendPromptResult | null> {
 	try {
 		const authSuccess = await agentClient.authenticate(authMethodId);

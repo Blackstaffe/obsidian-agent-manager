@@ -6,7 +6,7 @@
  * on the specific implementation (e.g., Obsidian's data.json storage).
  */
 
-import type { AgentClientPluginSettings } from "../../plugin";
+import type { AgentManagerPluginSettings } from "../../plugin";
 import type { ChatMessage } from "../models/chat-message";
 import type { SavedSessionInfo } from "../models/session-info";
 
@@ -28,7 +28,7 @@ export interface ISettingsAccess {
 	 *
 	 * @returns Current plugin settings
 	 */
-	getSnapshot(): AgentClientPluginSettings;
+	getSnapshot(): AgentManagerPluginSettings;
 
 	/**
 	 * Update plugin settings.
@@ -39,7 +39,7 @@ export interface ISettingsAccess {
 	 * @param updates - Partial settings object with properties to update
 	 * @returns Promise that resolves when settings are saved
 	 */
-	updateSettings(updates: Partial<AgentClientPluginSettings>): Promise<void>;
+	updateSettings(updates: Partial<AgentManagerPluginSettings>): Promise<void>;
 
 	/**
 	 * Subscribe to settings changes.

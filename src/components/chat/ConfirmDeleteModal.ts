@@ -37,23 +37,23 @@ export class ConfirmDeleteModal extends Modal {
 		// Message
 		contentEl.createEl("p", {
 			text: `Are you sure you want to delete "${this.sessionTitle}"?`,
-			cls: "agent-client-confirm-delete-message",
+			cls: "agent-manager-confirm-delete-message",
 		});
 
 		contentEl.createEl("p", {
 			text: "This only removes the session from this plugin. The session data will remain on the agent side.",
-			cls: "agent-client-confirm-delete-warning",
+			cls: "agent-manager-confirm-delete-warning",
 		});
 
 		// Buttons container
 		const buttonContainer = contentEl.createDiv({
-			cls: "agent-client-confirm-delete-buttons",
+			cls: "agent-manager-confirm-delete-buttons",
 		});
 
 		// Cancel button
 		const cancelButton = buttonContainer.createEl("button", {
 			text: "Cancel",
-			cls: "agent-client-confirm-delete-cancel",
+			cls: "agent-manager-confirm-delete-cancel",
 		});
 		cancelButton.addEventListener("click", () => {
 			this.close();
@@ -62,7 +62,7 @@ export class ConfirmDeleteModal extends Modal {
 		// Delete button
 		const deleteButton = buttonContainer.createEl("button", {
 			text: "Delete",
-			cls: "agent-client-confirm-delete-confirm mod-warning",
+			cls: "agent-manager-confirm-delete-confirm mod-warning",
 		});
 		deleteButton.addEventListener("click", () => {
 			this.close();

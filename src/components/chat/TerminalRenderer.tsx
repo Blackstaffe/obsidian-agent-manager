@@ -2,12 +2,12 @@ import * as React from "react";
 const { useState, useRef, useEffect } = React;
 import type { IAcpClient } from "../../adapters/acp/acp.adapter";
 import { getLogger } from "../../shared/logger";
-import type AgentClientPlugin from "../../plugin";
+import type AgentManagerPlugin from "../../plugin";
 
 interface TerminalRendererProps {
 	terminalId: string;
 	acpClient: IAcpClient | null;
-	plugin: AgentClientPlugin;
+	plugin: AgentManagerPlugin;
 }
 
 export function TerminalRenderer({
@@ -105,31 +105,31 @@ export function TerminalRenderer({
 	const showEmojis = plugin.settings.displaySettings.showEmojis;
 
 	return (
-		<div className="agent-client-terminal-renderer">
-			<div className="agent-client-terminal-renderer-header">
+		<div className="agent-manager-terminal-renderer">
+			<div className="agent-manager-terminal-renderer-header">
 				{showEmojis && "🖥️ "}Terminal {terminalId.slice(0, 8)}
 				{isRunning ? (
-					<span className="agent-client-terminal-status agent-client-running">
+					<span className="agent-manager-terminal-status agent-manager-running">
 						● RUNNING
 					</span>
 				) : isCancelled ? (
-					<span className="agent-client-terminal-status agent-client-cancelled">
+					<span className="agent-manager-terminal-status agent-manager-cancelled">
 						● CANCELLED
 					</span>
 				) : (
-					<span className="agent-client-terminal-status agent-client-finished">
+					<span className="agent-manager-terminal-status agent-manager-finished">
 						● FINISHED
 					</span>
 				)}
 			</div>
 
-			<div className="agent-client-terminal-renderer-output">
+			<div className="agent-manager-terminal-renderer-output">
 				{output || (isRunning ? "Waiting for output..." : "No output")}
 			</div>
 
 			{exitStatus && (
 				<div
-					className={`agent-client-terminal-renderer-exit ${exitStatus.exitCode === 0 ? "agent-client-success" : "agent-client-error"}`}
+					className={`agent-manager-terminal-renderer-exit ${exitStatus.exitCode === 0 ? "agent-manager-success" : "agent-manager-error"}`}
 				>
 					Exit Code: {exitStatus.exitCode}
 					{exitStatus.signal && ` | Signal: ${exitStatus.signal}`}

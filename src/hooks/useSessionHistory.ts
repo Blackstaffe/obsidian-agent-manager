@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from "react";
-import type { IAgentClient } from "../domain/ports/agent-client.port";
+import type { IAgentManager } from "../domain/ports/agent-manager.port";
 import type { ISettingsAccess } from "../domain/ports/settings-access.port";
 import type {
 	SessionInfo,
@@ -60,7 +60,7 @@ export interface MessagesRestoreCallback {
  */
 export interface UseSessionHistoryOptions {
 	/** Agent client for session operations */
-	agentClient: IAgentClient;
+	agentClient: IAgentManager;
 	/** Current session (used to access agentCapabilities and agentId) */
 	session: ChatSession;
 	/** Settings access for local session storage */

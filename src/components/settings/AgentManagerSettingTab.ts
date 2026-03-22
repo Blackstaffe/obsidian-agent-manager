@@ -5,7 +5,7 @@ import {
 	DropdownComponent,
 	Platform,
 } from "obsidian";
-import type AgentClientPlugin from "../../plugin";
+import type AgentManagerPlugin from "../../plugin";
 import type {
 	CustomAgentSettings,
 	AgentEnvVar,
@@ -18,12 +18,12 @@ import {
 	parseChatFontSize,
 } from "../../shared/display-settings";
 
-export class AgentClientSettingTab extends PluginSettingTab {
-	plugin: AgentClientPlugin;
+export class AgentManagerSettingTab extends PluginSettingTab {
+	plugin: AgentManagerPlugin;
 	private agentSelector: DropdownComponent | null = null;
 	private unsubscribe: (() => void) | null = null;
 
-	constructor(app: App, plugin: AgentClientPlugin) {
+	constructor(app: App, plugin: AgentManagerPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -42,12 +42,12 @@ export class AgentClientSettingTab extends PluginSettingTab {
 
 		// Documentation link
 		const docContainer = containerEl.createDiv({
-			cls: "agent-client-doc-link",
+			cls: "agent-manager-doc-link",
 		});
 		docContainer.createSpan({ text: "Need help? Check out the " });
 		docContainer.createEl("a", {
 			text: "documentation",
-			href: "https://rait-09.github.io/obsidian-agent-client/",
+			href: "https://rait-09.github.io/obsidian-agent-manager/",
 			attr: { target: "_blank" },
 		});
 		docContainer.createSpan({ text: "." });
@@ -490,7 +490,7 @@ export class AgentClientSettingTab extends PluginSettingTab {
 			.setDesc("Folder where chat exports will be saved")
 			.addText((text) =>
 				text
-					.setPlaceholder("Agent Client")
+					.setPlaceholder("Agent Manager")
 					.setValue(this.plugin.settings.exportSettings.defaultFolder)
 					.onChange(async (value) => {
 						this.plugin.settings.exportSettings.defaultFolder =
@@ -520,11 +520,11 @@ export class AgentClientSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Frontmatter tag")
 			.setDesc(
-				"Tag to add to exported notes. Supports nested tags (e.g., projects/agent-client). Leave empty to disable.",
+				"Tag to add to exported notes. Supports nested tags (e.g., projects/agent-manager). Leave empty to disable.",
 			)
 			.addText((text) =>
 				text
-					.setPlaceholder("agent-client")
+					.setPlaceholder("agent-manager")
 					.setValue(
 						this.plugin.settings.exportSettings.frontmatterTag,
 					)
@@ -585,7 +585,7 @@ export class AgentClientSettingTab extends PluginSettingTab {
 					)
 					.addText((text) =>
 						text
-							.setPlaceholder("Agent Client")
+							.setPlaceholder("Agent Manager")
 							.setValue(
 								this.plugin.settings.exportSettings
 									.imageCustomFolder,
@@ -1019,7 +1019,7 @@ export class AgentClientSettingTab extends PluginSettingTab {
 		index: number,
 	) {
 		const blockEl = containerEl.createDiv({
-			cls: "agent-client-custom-agent",
+			cls: "agent-manager-custom-agent",
 		});
 
 		const idSetting = new Setting(blockEl)

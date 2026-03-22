@@ -3,7 +3,7 @@ const { useState, useRef, useEffect, useCallback, useMemo } = React;
 import { createRoot, type Root } from "react-dom/client";
 
 import { setIcon } from "obsidian";
-import type AgentClientPlugin from "../../plugin";
+import type AgentManagerPlugin from "../../plugin";
 import { useSettings } from "../../hooks/useSettings";
 import { clampPosition } from "../../shared/floating-utils";
 
@@ -23,9 +23,9 @@ export class FloatingButtonContainer {
 	private root: Root | null = null;
 	private containerEl: HTMLElement;
 
-	constructor(private plugin: AgentClientPlugin) {
+	constructor(private plugin: AgentManagerPlugin) {
 		this.containerEl = document.body.createDiv({
-			cls: "agent-client-floating-button-root",
+			cls: "agent-manager-floating-button-root",
 		});
 	}
 
@@ -48,7 +48,7 @@ export class FloatingButtonContainer {
 // ============================================================
 
 interface FloatingButtonProps {
-	plugin: AgentClientPlugin;
+	plugin: AgentManagerPlugin;
 }
 
 function FloatingButtonComponent({ plugin }: FloatingButtonProps) {
@@ -238,7 +238,7 @@ function FloatingButtonComponent({ plugin }: FloatingButtonProps) {
 	if (!settings.enableFloatingChat) return null;
 
 	const buttonClassName = [
-		"agent-client-floating-button",
+		"agent-manager-floating-button",
 		floatingButtonImageSrc ? "has-custom-image" : "",
 		isDragging ? "is-dragging" : "",
 	]
@@ -266,7 +266,7 @@ function FloatingButtonComponent({ plugin }: FloatingButtonProps) {
 					<img src={floatingButtonImageSrc} alt="Open chat" />
 				) : (
 					<div
-						className="agent-client-floating-button-fallback"
+						className="agent-manager-floating-button-fallback"
 						ref={(el) => {
 							if (el) setIcon(el, "bot-message-square");
 						}}
@@ -276,7 +276,7 @@ function FloatingButtonComponent({ plugin }: FloatingButtonProps) {
 			{showInstanceMenu && (
 				<div
 					ref={instanceMenuRef}
-					className="agent-client-floating-instance-menu"
+					className="agent-manager-floating-instance-menu"
 					style={
 						position
 							? {
@@ -300,25 +300,25 @@ function FloatingButtonComponent({ plugin }: FloatingButtonProps) {
 							: undefined
 					}
 				>
-					<div className="agent-client-floating-instance-menu-header">
+					<div className="agent-manager-floating-instance-menu-header">
 						Select session to open
 					</div>
 					{instanceLabels.map(({ viewId: id, label }) => (
 						<div
 							key={id}
-							className="agent-client-floating-instance-menu-item"
+							className="agent-manager-floating-instance-menu-item"
 							onClick={() => {
 								plugin.expandFloatingChat(id);
 								plugin.viewRegistry.setFocused(id);
 								setShowInstanceMenu(false);
 							}}
 						>
-							<span className="agent-client-floating-instance-menu-label">
+							<span className="agent-manager-floating-instance-menu-label">
 								{label}
 							</span>
 							{instanceLabels.length > 1 && (
 								<button
-									className="agent-client-floating-instance-menu-close"
+									className="agent-manager-floating-instance-menu-close"
 									onClick={(e) => {
 										e.stopPropagation();
 										plugin.closeFloatingChat(id);

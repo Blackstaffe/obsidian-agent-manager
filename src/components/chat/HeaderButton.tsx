@@ -26,7 +26,7 @@ export const HeaderButton = forwardRef<HTMLButtonElement, HeaderButtonProps>(
 				ref={buttonRef}
 				title={tooltip}
 				onClick={onClick}
-				className="agent-client-header-button"
+				className="agent-manager-header-button"
 			/>
 		);
 	},

@@ -1,7 +1,7 @@
 /**
  * Port for communicating with ACP-compatible AI agents
  *
- * This plugin is designed specifically for the Agent Client Protocol (ACP).
+ * This plugin is designed specifically for the Agent Manager Protocol (ACP).
  * This interface abstracts the ACP connection lifecycle and messaging,
  * allowing the domain layer to work with agents without depending on
  * the specific ACP library implementation.
@@ -223,7 +223,7 @@ export interface NewSessionResult {
  * This port will be implemented by adapters that handle the actual
  * ACP protocol communication and process management.
  */
-export interface IAgentClient {
+export interface IAgentManager {
 	/**
 	 * Initialize connection to an agent.
 	 *

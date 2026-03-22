@@ -3,7 +3,7 @@ const { useRef, useState, useEffect, useCallback } = React;
 
 import type { ChatMessage } from "../../domain/models/chat-message";
 import type { IAcpClient } from "../../adapters/acp/acp.adapter";
-import type AgentClientPlugin from "../../plugin";
+import type AgentManagerPlugin from "../../plugin";
 import type { IChatViewHost } from "./types";
 import { setIcon } from "obsidian";
 import { MessageRenderer } from "./MessageRenderer";
@@ -23,7 +23,7 @@ export interface ChatMessagesProps {
 	/** Display name of the active agent */
 	agentLabel: string;
 	/** Plugin instance */
-	plugin: AgentClientPlugin;
+	plugin: AgentManagerPlugin;
 	/** View instance for event registration */
 	view: IChatViewHost;
 	/** ACP client for terminal operations */
@@ -119,9 +119,9 @@ export function ChatMessages({
 	}, [view, checkIfAtBottom]);
 
 	return (
-		<div ref={containerRef} className="agent-client-chat-view-messages">
+		<div ref={containerRef} className="agent-manager-chat-view-messages">
 			{messages.length === 0 ? (
-				<div className="agent-client-chat-empty-state">
+				<div className="agent-manager-chat-empty-state">
 					{isRestoringSession
 						? "Restoring session..."
 						: !isSessionReady
@@ -140,28 +140,28 @@ export function ChatMessages({
 						/>
 					))}
 					<div
-						className={`agent-client-loading-indicator ${!isSending ? "agent-client-hidden" : ""}`}
+						className={`agent-manager-loading-indicator ${!isSending ? "agent-manager-hidden" : ""}`}
 					>
-						<div className="agent-client-loading-dots">
-							<div className="agent-client-loading-dot"></div>
-							<div className="agent-client-loading-dot"></div>
-							<div className="agent-client-loading-dot"></div>
-							<div className="agent-client-loading-dot"></div>
-							<div className="agent-client-loading-dot"></div>
-							<div className="agent-client-loading-dot"></div>
-							<div className="agent-client-loading-dot"></div>
-							<div className="agent-client-loading-dot"></div>
-							<div className="agent-client-loading-dot"></div>
+						<div className="agent-manager-loading-dots">
+							<div className="agent-manager-loading-dot"></div>
+							<div className="agent-manager-loading-dot"></div>
+							<div className="agent-manager-loading-dot"></div>
+							<div className="agent-manager-loading-dot"></div>
+							<div className="agent-manager-loading-dot"></div>
+							<div className="agent-manager-loading-dot"></div>
+							<div className="agent-manager-loading-dot"></div>
+							<div className="agent-manager-loading-dot"></div>
+							<div className="agent-manager-loading-dot"></div>
 						</div>
 						{hasActivePermission && (
-							<span className="agent-client-loading-status">
+							<span className="agent-manager-loading-status">
 								Waiting for permission...
 							</span>
 						)}
 					</div>
 					{!isAtBottom && (
 						<button
-							className="agent-client-scroll-to-bottom"
+							className="agent-manager-scroll-to-bottom"
 							onClick={() => {
 								const container = containerRef.current;
 								if (container) {

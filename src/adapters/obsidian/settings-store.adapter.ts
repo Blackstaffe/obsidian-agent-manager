@@ -8,8 +8,8 @@
 
 import { Platform } from "obsidian";
 import type { ISettingsAccess } from "../../domain/ports/settings-access.port";
-import type { AgentClientPluginSettings } from "../../plugin";
-import type AgentClientPlugin from "../../plugin";
+import type { AgentManagerPluginSettings } from "../../plugin";
+import type AgentManagerPlugin from "../../plugin";
 import type {
 	ChatMessage,
 	MessageContent,
@@ -49,13 +49,13 @@ interface SessionMessagesFile {
  */
 export class SettingsStore implements ISettingsAccess {
 	/** Current settings state */
-	private state: AgentClientPluginSettings;
+	private state: AgentManagerPluginSettings;
 
 	/** Set of registered listeners */
 	private listeners = new Set<Listener>();
 
 	/** Plugin instance for persistence */
-	private plugin: AgentClientPlugin;
+	private plugin: AgentManagerPlugin;
 
 	/** Lock for session operations to prevent race conditions */
 	private sessionLock: Promise<void> = Promise.resolve();
@@ -66,7 +66,7 @@ export class SettingsStore implements ISettingsAccess {
 	 * @param initial - Initial settings state
 	 * @param plugin - Plugin instance for saving settings
 	 */
-	constructor(initial: AgentClientPluginSettings, plugin: AgentClientPlugin) {
+	constructor(initial: AgentManagerPluginSettings, plugin: AgentManagerPlugin) {
 		this.state = initial;
 		this.plugin = plugin;
 	}
@@ -78,7 +78,7 @@ export class SettingsStore implements ISettingsAccess {
 	 *
 	 * @returns Current plugin settings
 	 */
-	getSnapshot = (): AgentClientPluginSettings => this.state;
+	getSnapshot = (): AgentManagerPluginSettings => this.state;
 
 	/**
 	 * Update plugin settings.
@@ -90,7 +90,7 @@ export class SettingsStore implements ISettingsAccess {
 	 * @returns Promise that resolves when settings are saved
 	 */
 	async updateSettings(
-		updates: Partial<AgentClientPluginSettings>,
+		updates: Partial<AgentManagerPluginSettings>,
 	): Promise<void> {
 		const next = { ...this.state, ...updates };
 		this.state = next;
@@ -129,7 +129,7 @@ export class SettingsStore implements ISettingsAccess {
 	 *
 	 * @param next - New settings object
 	 */
-	set(next: AgentClientPluginSettings): void {
+	set(next: AgentManagerPluginSettings): void {
 		// Delegate to async updateSettings
 		// Note: Fire-and-forget - callers don't expect this to be async
 		void this.updateSettings(next);
@@ -253,7 +253,7 @@ export class SettingsStore implements ISettingsAccess {
 	 * @returns Path to sessions directory
 	 */
 	private getSessionsDir(): string {
-		return `${this.plugin.app.vault.configDir}/plugins/agent-client/sessions`;
+		return `${this.plugin.app.vault.configDir}/plugins/agent-manager/sessions`;
 	}
 
 	/**
@@ -403,6 +403,6 @@ export class SettingsStore implements ISettingsAccess {
  * @returns New SettingsStore instance
  */
 export const createSettingsStore = (
-	initial: AgentClientPluginSettings,
-	plugin: AgentClientPlugin,
+	initial: AgentManagerPluginSettings,
+	plugin: AgentManagerPlugin,
 ) => new SettingsStore(initial, plugin);

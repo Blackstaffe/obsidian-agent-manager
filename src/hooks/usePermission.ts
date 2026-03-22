@@ -3,7 +3,7 @@ import type {
 	ChatMessage,
 	PermissionOption,
 } from "../domain/models/chat-message";
-import type { IAgentClient } from "../domain/ports/agent-client.port";
+import type { IAgentManager } from "../domain/ports/agent-manager.port";
 import type { ErrorInfo } from "../domain/models/agent-error";
 
 // ============================================================================
@@ -131,7 +131,7 @@ function selectOption(
  * @param messages - Chat messages (from useChat) to scan for active permissions
  */
 export function usePermission(
-	agentClient: IAgentClient,
+	agentClient: IAgentManager,
 	messages: ChatMessage[],
 ): UsePermissionReturn {
 	// Error state

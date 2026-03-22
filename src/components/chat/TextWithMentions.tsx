@@ -1,9 +1,9 @@
 import * as React from "react";
-import type AgentClientPlugin from "../../plugin";
+import type AgentManagerPlugin from "../../plugin";
 
 interface TextWithMentionsProps {
 	text: string;
-	plugin: AgentClientPlugin;
+	plugin: AgentManagerPlugin;
 	autoMentionContext?: {
 		noteName: string;
 		notePath: string;
@@ -33,7 +33,7 @@ export function TextWithMentions({
 		parts.push(
 			<span
 				key="auto-mention"
-				className="agent-client-text-mention"
+				className="agent-manager-text-mention"
 				onClick={() => {
 					void plugin.app.workspace.openLinkText(
 						autoMentionContext.notePath,
@@ -69,7 +69,7 @@ export function TextWithMentions({
 			parts.push(
 				<span
 					key={match.index}
-					className="agent-client-text-mention"
+					className="agent-manager-text-mention"
 					onClick={() => {
 						void plugin.app.workspace.openLinkText(file.path, "");
 					}}
@@ -90,5 +90,5 @@ export function TextWithMentions({
 		parts.push(text.slice(lastIndex));
 	}
 
-	return <div className="agent-client-text-with-mentions">{parts}</div>;
+	return <div className="agent-manager-text-with-mentions">{parts}</div>;
 }

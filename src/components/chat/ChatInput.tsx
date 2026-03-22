@@ -2,7 +2,7 @@ import * as React from "react";
 const { useRef, useState, useEffect, useCallback } = React;
 import { setIcon, DropdownComponent, Notice } from "obsidian";
 
-import type AgentClientPlugin from "../../plugin";
+import type AgentManagerPlugin from "../../plugin";
 import type { IChatViewHost } from "./types";
 import type { NoteMetadata } from "../../domain/ports/vault-access.port";
 import type {
@@ -66,10 +66,10 @@ function formatTokenCount(tokens: number): string {
 
 /** Get CSS class for usage percentage color thresholds */
 function getUsageColorClass(percentage: number): string {
-	if (percentage >= 90) return "agent-client-usage-danger";
-	if (percentage >= 80) return "agent-client-usage-warning";
-	if (percentage >= 70) return "agent-client-usage-caution";
-	return "agent-client-usage-normal";
+	if (percentage >= 90) return "agent-manager-usage-danger";
+	if (percentage >= 80) return "agent-manager-usage-warning";
+	if (percentage >= 70) return "agent-manager-usage-caution";
+	return "agent-manager-usage-normal";
 }
 
 /**
@@ -97,7 +97,7 @@ export interface ChatInputProps {
 	/** Auto-mention hook state and methods */
 	autoMention: UseAutoMentionReturn;
 	/** Plugin instance */
-	plugin: AgentClientPlugin;
+	plugin: AgentManagerPlugin;
 	/** View instance for event registration */
 	view: IChatViewHost;
 	/** Callback to send a message with optional attachments */
@@ -249,14 +249,14 @@ export function ChatInput({
 			const remaining = MAX_ATTACHMENT_COUNT - attachedFiles.length;
 			if (remaining <= 0) {
 				new Notice(
-					`[Agent Client] Maximum ${MAX_ATTACHMENT_COUNT} attachments allowed`,
+					`[Agent Manager] Maximum ${MAX_ATTACHMENT_COUNT} attachments allowed`,
 				);
 				return;
 			}
 			const toAdd = newFiles.slice(0, remaining);
 			if (toAdd.length < newFiles.length) {
 				new Notice(
-					`[Agent Client] Maximum ${MAX_ATTACHMENT_COUNT} attachments allowed`,
+					`[Agent Manager] Maximum ${MAX_ATTACHMENT_COUNT} attachments allowed`,
 				);
 			}
 			onAttachedFilesChange([...attachedFiles, ...toAdd]);
@@ -301,7 +301,7 @@ export function ChatInput({
 			for (const file of files) {
 				if (file.size > MAX_IMAGE_SIZE_BYTES) {
 					new Notice(
-						`[Agent Client] Image too large (max ${MAX_IMAGE_SIZE_MB}MB)`,
+						`[Agent Manager] Image too large (max ${MAX_IMAGE_SIZE_MB}MB)`,
 					);
 					continue;
 				}
@@ -315,7 +315,7 @@ export function ChatInput({
 					});
 				} catch (error) {
 					console.error("Failed to convert image:", error);
-					new Notice("[Agent Client] Failed to attach image");
+					new Notice("[Agent Manager] Failed to attach image");
 				}
 			}
 			return result;
@@ -338,7 +338,7 @@ export function ChatInput({
 			for (const file of files) {
 				const filePath = webUtils.getPathForFile(file);
 				if (!filePath) {
-					new Notice("[Agent Client] Could not determine file path");
+					new Notice("[Agent Manager] Could not determine file path");
 					continue;
 				}
 				result.push({
@@ -403,7 +403,7 @@ export function ChatInput({
 						newAttachments.push(...converted);
 					} else {
 						new Notice(
-							"[Agent Client] This agent does not support image paste. Try drag & drop instead.",
+							"[Agent Manager] This agent does not support image paste. Try drag & drop instead.",
 						);
 					}
 				}
@@ -596,12 +596,12 @@ export function ChatInput({
 		if (textarea) {
 			// Remove previous dynamic height classes
 			textarea.classList.remove(
-				"agent-client-textarea-auto-height",
-				"agent-client-textarea-expanded",
+				"agent-manager-textarea-auto-height",
+				"agent-manager-textarea-expanded",
 			);
 
 			// Temporarily use auto to measure
-			textarea.classList.add("agent-client-textarea-auto-height");
+			textarea.classList.add("agent-manager-textarea-auto-height");
 			const scrollHeight = textarea.scrollHeight;
 			const minHeight = 80;
 			const maxHeight = 300;
@@ -614,7 +614,7 @@ export function ChatInput({
 
 			// Apply expanded class if needed
 			if (calculatedHeight > minHeight) {
-				textarea.classList.add("agent-client-textarea-expanded");
+				textarea.classList.add("agent-manager-textarea-expanded");
 				// Set CSS variable for dynamic height
 				textarea.style.setProperty(
 					"--textarea-height",
@@ -624,7 +624,7 @@ export function ChatInput({
 				textarea.style.removeProperty("--textarea-height");
 			}
 
-			textarea.classList.remove("agent-client-textarea-auto-height");
+			textarea.classList.remove("agent-manager-textarea-auto-height");
 		}
 	}, []);
 
@@ -635,22 +635,22 @@ export function ChatInput({
 		(svg: SVGElement) => {
 			// Remove all state classes
 			svg.classList.remove(
-				"agent-client-icon-sending",
-				"agent-client-icon-active",
-				"agent-client-icon-inactive",
+				"agent-manager-icon-sending",
+				"agent-manager-icon-active",
+				"agent-manager-icon-inactive",
 			);
 
 			if (isSending) {
 				// Stop button - always active when sending
-				svg.classList.add("agent-client-icon-sending");
+				svg.classList.add("agent-manager-icon-sending");
 			} else {
 				// Send button - active when has input (text or images)
 				const hasContent =
 					inputValue.trim() !== "" || attachedFiles.length > 0;
 				svg.classList.add(
 					hasContent
-						? "agent-client-icon-active"
-						: "agent-client-icon-inactive",
+						? "agent-manager-icon-active"
+						: "agent-manager-icon-inactive",
 				);
 			}
 		},
@@ -1055,10 +1055,10 @@ export function ChatInput({
 
 			// Create wrapper div with appropriate class based on category
 			const categoryClass = option.category
-				? `agent-client-config-selector-${option.category}`
-				: "agent-client-config-selector";
+				? `agent-manager-config-selector-${option.category}`
+				: "agent-manager-config-selector";
 			const wrapperEl = containerEl.createDiv({
-				cls: `agent-client-config-selector ${categoryClass}`,
+				cls: `agent-manager-config-selector ${categoryClass}`,
 				attr: { title: option.description ?? option.name },
 			});
 
@@ -1094,7 +1094,7 @@ export function ChatInput({
 
 			// Add chevron icon
 			const iconEl = wrapperEl.createSpan({
-				cls: "agent-client-config-selector-icon",
+				cls: "agent-manager-config-selector-icon",
 			});
 			setIcon(iconEl, "chevron-down");
 
@@ -1111,7 +1111,7 @@ export function ChatInput({
 	const placeholder = `Message ${agentLabel} - @ to mention notes${availableCommands.length > 0 ? ", / for commands" : ""}`;
 
 	return (
-		<div className="agent-client-chat-input-container">
+		<div className="agent-manager-chat-input-container">
 			{/* Error Overlay - displayed above input */}
 			{errorInfo && (
 				<ErrorOverlay
@@ -1161,7 +1161,7 @@ export function ChatInput({
 
 			{/* Input Box - flexbox container with border */}
 			<div
-				className={`agent-client-chat-input-box ${isDraggingOver ? "agent-client-dragging-over" : ""}`}
+				className={`agent-manager-chat-input-box ${isDraggingOver ? "agent-manager-dragging-over" : ""}`}
 				onDragOver={handleDragOver}
 				onDragEnter={handleDragEnter}
 				onDragLeave={handleDragLeave}
@@ -1169,13 +1169,13 @@ export function ChatInput({
 			>
 				{/* Auto-mention Badge */}
 				{autoMentionEnabled && autoMention.activeNote && (
-					<div className="agent-client-auto-mention-inline">
+					<div className="agent-manager-auto-mention-inline">
 						<span
-							className={`agent-client-mention-badge ${autoMention.isDisabled ? "agent-client-disabled" : ""}`}
+							className={`agent-manager-mention-badge ${autoMention.isDisabled ? "agent-manager-disabled" : ""}`}
 						>
 							@{autoMention.activeNote.name}
 							{autoMention.activeNote.selection && (
-								<span className="agent-client-selection-indicator">
+								<span className="agent-manager-selection-indicator">
 									{":"}
 									{autoMention.activeNote.selection.from
 										.line + 1}
@@ -1186,7 +1186,7 @@ export function ChatInput({
 							)}
 						</span>
 						<button
-							className="agent-client-auto-mention-toggle-btn"
+							className="agent-manager-auto-mention-toggle-btn"
 							onClick={(e) => {
 								const newDisabledState =
 									!autoMention.isDisabled;
@@ -1214,7 +1214,7 @@ export function ChatInput({
 				)}
 
 				{/* Textarea with Hint Overlay */}
-				<div className="agent-client-textarea-wrapper">
+				<div className="agent-manager-textarea-wrapper">
 					<textarea
 						ref={textareaRef}
 						value={inputValue}
@@ -1222,19 +1222,19 @@ export function ChatInput({
 						onKeyDown={handleKeyDown}
 						onPaste={(e) => void handlePaste(e)}
 						placeholder={placeholder}
-						className={`agent-client-chat-input-textarea ${autoMentionEnabled && autoMention.activeNote ? "has-auto-mention" : ""}`}
+						className={`agent-manager-chat-input-textarea ${autoMentionEnabled && autoMention.activeNote ? "has-auto-mention" : ""}`}
 						rows={1}
 						spellCheck={obsidianSpellcheck}
 					/>
 					{hintText && (
 						<div
-							className="agent-client-hint-overlay"
+							className="agent-manager-hint-overlay"
 							aria-hidden="true"
 						>
-							<span className="agent-client-invisible">
+							<span className="agent-manager-invisible">
 								{commandText}
 							</span>
-							<span className="agent-client-hint-text">
+							<span className="agent-manager-hint-text">
 								{hintText}
 							</span>
 						</div>
@@ -1248,11 +1248,11 @@ export function ChatInput({
 				/>
 
 				{/* Input Actions (Config Options / Mode Selector / Model Selector + Send Button) */}
-				<div className="agent-client-chat-input-actions">
+				<div className="agent-manager-chat-input-actions">
 					{/* Context Usage Indicator (left-aligned via margin-right: auto) */}
 					{usage && (
 						<span
-							className={`agent-client-usage-indicator ${getUsageColorClass(Math.round((usage.used / usage.size) * 100))}`}
+							className={`agent-manager-usage-indicator ${getUsageColorClass(Math.round((usage.used / usage.size) * 100))}`}
 							aria-label={
 								usage.cost
 									? `${formatTokenCount(usage.used)} / ${formatTokenCount(usage.size)} tokens\n$${usage.cost.amount.toFixed(2)}`
@@ -1267,14 +1267,14 @@ export function ChatInput({
 					{configOptions && configOptions.length > 0 ? (
 						<div
 							ref={configOptionsRef}
-							className="agent-client-config-options-container"
+							className="agent-manager-config-options-container"
 						/>
 					) : (
 						<>
 							{/* Legacy Mode Selector */}
 							{modes && modes.availableModes.length > 1 && (
 								<div
-									className="agent-client-mode-selector"
+									className="agent-manager-mode-selector"
 									title={
 										modes.availableModes.find(
 											(m) => m.id === modes.currentModeId,
@@ -1283,7 +1283,7 @@ export function ChatInput({
 								>
 									<div ref={modeDropdownRef} />
 									<span
-										className="agent-client-mode-selector-icon"
+										className="agent-manager-mode-selector-icon"
 										ref={(el) => {
 											if (el) setIcon(el, "chevron-down");
 										}}
@@ -1294,7 +1294,7 @@ export function ChatInput({
 							{/* Legacy Model Selector */}
 							{models && models.availableModels.length > 1 && (
 								<div
-									className="agent-client-model-selector"
+									className="agent-manager-model-selector"
 									title={
 										models.availableModels.find(
 											(m) =>
@@ -1305,7 +1305,7 @@ export function ChatInput({
 								>
 									<div ref={modelDropdownRef} />
 									<span
-										className="agent-client-model-selector-icon"
+										className="agent-manager-model-selector-icon"
 										ref={(el) => {
 											if (el) setIcon(el, "chevron-down");
 										}}
@@ -1320,7 +1320,7 @@ export function ChatInput({
 						ref={sendButtonRef}
 						onClick={() => void handleSendOrStop()}
 						disabled={isButtonDisabled}
-						className={`agent-client-chat-send-button ${isSending ? "sending" : ""} ${isButtonDisabled ? "agent-client-disabled" : ""}`}
+						className={`agent-manager-chat-send-button ${isSending ? "sending" : ""} ${isButtonDisabled ? "agent-manager-disabled" : ""}`}
 						title={
 							!isSessionReady
 								? "Connecting..."

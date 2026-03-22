@@ -8,7 +8,7 @@ import {
 	replaceMention,
 	type MentionContext,
 } from "../shared/mention-utils";
-import type AgentClientPlugin from "../plugin";
+import type AgentManagerPlugin from "../plugin";
 
 export interface UseMentionsReturn {
 	/** Note suggestions matching the current mention query */
@@ -50,7 +50,7 @@ export interface UseMentionsReturn {
  */
 export function useMentions(
 	vaultAccess: IVaultAccess,
-	plugin: AgentClientPlugin,
+	plugin: AgentManagerPlugin,
 ): UseMentionsReturn {
 	const [suggestions, setSuggestions] = useState<NoteMetadata[]>([]);
 	const [selectedIndex, setSelectedIndex] = useState(0);

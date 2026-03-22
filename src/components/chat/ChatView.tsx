@@ -7,7 +7,7 @@ import * as React from "react";
 const { useState, useRef, useEffect, useCallback } = React;
 import { createRoot, Root } from "react-dom/client";
 
-import type AgentClientPlugin from "../../plugin";
+import type AgentManagerPlugin from "../../plugin";
 import type { ChatInputState } from "../../domain/models/chat-input-state";
 
 // Component imports
@@ -31,14 +31,14 @@ interface AppWithSettings {
 	};
 }
 
-export const VIEW_TYPE_CHAT = "agent-client-chat-view";
+export const VIEW_TYPE_CHAT = "agent-manager-chat-view";
 
 function ChatComponent({
 	plugin,
 	view,
 	viewId,
 }: {
-	plugin: AgentClientPlugin;
+	plugin: AgentManagerPlugin;
 	view: ChatView;
 	viewId: string;
 }) {
@@ -46,7 +46,7 @@ function ChatComponent({
 	// Platform Check
 	// ============================================================
 	if (!Platform.isDesktopApp) {
-		throw new Error("Agent Client is only available on desktop");
+		throw new Error("Agent Manager is only available on desktop");
 	}
 
 	// ============================================================
@@ -381,7 +381,7 @@ function ChatComponent({
 					callback: CustomEventCallback,
 				) => ReturnType<typeof workspace.on>;
 			}
-		).on("agent-client:toggle-auto-mention", (targetViewId?: string) => {
+		).on("agent-manager:toggle-auto-mention", (targetViewId?: string) => {
 			// Only respond if this view is the target (or no target specified)
 			if (targetViewId && targetViewId !== viewId) {
 				return;
@@ -406,7 +406,7 @@ function ChatComponent({
 					callback: (agentId?: string) => void,
 				) => ReturnType<typeof workspace.on>;
 			}
-		).on("agent-client:new-chat-requested", (agentId?: string) => {
+		).on("agent-manager:new-chat-requested", (agentId?: string) => {
 			// Note: new-chat-requested targets the last active view, which is handled
 			// by plugin.lastActiveChatViewId - only respond if we are that view
 			if (
@@ -439,7 +439,7 @@ function ChatComponent({
 				) => ReturnType<typeof workspace.on>;
 			}
 		).on(
-			"agent-client:approve-active-permission",
+			"agent-manager:approve-active-permission",
 			(targetViewId?: string) => {
 				// Only respond if this view is the target (or no target specified)
 				if (targetViewId && targetViewId !== viewId) {
@@ -449,7 +449,7 @@ function ChatComponent({
 					const success = await permission.approveActivePermission();
 					if (!success) {
 						new Notice(
-							"[Agent Client] No active permission request",
+							"[Agent Manager] No active permission request",
 						);
 					}
 				})();
@@ -464,7 +464,7 @@ function ChatComponent({
 				) => ReturnType<typeof workspace.on>;
 			}
 		).on(
-			"agent-client:reject-active-permission",
+			"agent-manager:reject-active-permission",
 			(targetViewId?: string) => {
 				// Only respond if this view is the target (or no target specified)
 				if (targetViewId && targetViewId !== viewId) {
@@ -474,7 +474,7 @@ function ChatComponent({
 					const success = await permission.rejectActivePermission();
 					if (!success) {
 						new Notice(
-							"[Agent Client] No active permission request",
+							"[Agent Manager] No active permission request",
 						);
 					}
 				})();
@@ -488,7 +488,7 @@ function ChatComponent({
 					callback: CustomEventCallback,
 				) => ReturnType<typeof workspace.on>;
 			}
-		).on("agent-client:cancel-message", (targetViewId?: string) => {
+		).on("agent-manager:cancel-message", (targetViewId?: string) => {
 			// Only respond if this view is the target (or no target specified)
 			if (targetViewId && targetViewId !== viewId) {
 				return;
@@ -503,7 +503,7 @@ function ChatComponent({
 					callback: CustomEventCallback,
 				) => ReturnType<typeof workspace.on>;
 			}
-		).on("agent-client:export-chat", (targetViewId?: string) => {
+		).on("agent-manager:export-chat", (targetViewId?: string) => {
 			// Only respond if this view is the target (or no target specified)
 			if (targetViewId && targetViewId !== viewId) {
 				return;
@@ -538,7 +538,7 @@ function ChatComponent({
 
 	return (
 		<div
-			className="agent-client-chat-view-container"
+			className="agent-manager-chat-view-container"
 			style={chatFontSizeStyle}
 		>
 			<ChatHeader
@@ -623,7 +623,7 @@ type CancelCallback = () => Promise<void>;
 
 export class ChatView extends ItemView implements IChatViewContainer {
 	private root: Root | null = null;
-	private plugin: AgentClientPlugin;
+	private plugin: AgentManagerPlugin;
 	private logger: Logger;
 	/** Unique identifier for this view instance (for multi-session support) */
 	readonly viewId: string;
@@ -643,7 +643,7 @@ export class ChatView extends ItemView implements IChatViewContainer {
 	private canSendCallback: CanSendCallback | null = null;
 	private cancelCallback: CancelCallback | null = null;
 
-	constructor(leaf: WorkspaceLeaf, plugin: AgentClientPlugin) {
+	constructor(leaf: WorkspaceLeaf, plugin: AgentManagerPlugin) {
 		super(leaf);
 		this.plugin = plugin;
 		this.logger = getLogger();
@@ -824,7 +824,7 @@ export class ChatView extends ItemView implements IChatViewContainer {
 	focus(): void {
 		void this.app.workspace.revealLeaf(this.leaf).then(() => {
 			const textarea = this.containerEl.querySelector(
-				"textarea.agent-client-chat-input-textarea",
+				"textarea.agent-manager-chat-input-textarea",
 			);
 			if (textarea instanceof HTMLTextAreaElement) {
 				textarea.focus();

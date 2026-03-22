@@ -3,11 +3,11 @@ import * as acp from "@agentclientprotocol/sdk";
 import { Platform } from "obsidian";
 
 import type {
-	IAgentClient,
+	IAgentManager,
 	AgentConfig,
 	InitializeResult,
 	NewSessionResult,
-} from "../../domain/ports/agent-client.port";
+} from "../../domain/ports/agent-manager.port";
 import type {
 	MessageContent,
 	PermissionOption,
@@ -27,7 +27,7 @@ import type {
 import { AcpTypeConverter } from "./acp-type-converter";
 import { TerminalManager } from "../../shared/terminal-manager";
 import { getLogger, Logger } from "../../shared/logger";
-import type AgentClientPlugin from "../../plugin";
+import type AgentManagerPlugin from "../../plugin";
 import type {
 	SlashCommand,
 	SessionModeState,
@@ -46,7 +46,7 @@ import { escapeShellArgWindows, getLoginShell } from "../../shared/shell-utils";
  *
  * Provides ACP-specific operations needed by UI components
  * (terminal rendering, permission handling, etc.) that are not
- * part of the domain-level IAgentClient interface.
+ * part of the domain-level IAgentManager interface.
  *
  * This interface extends the base ACP Client from the protocol library
  * with plugin-specific methods for:
@@ -65,7 +65,7 @@ export interface IAcpClient extends acp.Client {
 }
 
 /**
- * Adapter that wraps the Agent Client Protocol (ACP) library.
+ * Adapter that wraps the Agent Manager Protocol (ACP) library.
  *
  * This adapter:
  * - Manages agent process lifecycle (spawn, monitor, kill)
@@ -73,7 +73,7 @@ export interface IAcpClient extends acp.Client {
  * - Handles message updates and terminal operations
  * - Provides callbacks for UI updates
  */
-export class AcpAdapter implements IAgentClient, IAcpClient {
+export class AcpAdapter implements IAgentManager, IAcpClient {
 	private connection: acp.ClientSideConnection | null = null;
 	private agentProcess: ChildProcess | null = null;
 	private logger: Logger;
@@ -121,7 +121,7 @@ export class AcpAdapter implements IAgentClient, IAcpClient {
 	// Captures recent stderr output for error diagnostics
 	private recentStderr = "";
 
-	constructor(private plugin: AgentClientPlugin) {
+	constructor(private plugin: AgentManagerPlugin) {
 		this.logger = getLogger();
 		// Initialize with no-op callback
 		this.updateMessage = () => {};
@@ -443,8 +443,8 @@ export class AcpAdapter implements IAgentClient, IAcpClient {
 					terminal: true,
 				},
 				clientInfo: {
-					name: "obsidian-agent-client",
-					title: "Agent Client for Obsidian",
+					name: "obsidian-agent-manager",
+					title: "Agent Manager for Obsidian",
 					version: this.plugin.manifest.version,
 				},
 			});
@@ -816,7 +816,7 @@ export class AcpAdapter implements IAgentClient, IAcpClient {
 	/**
 	 * Check if the agent connection is initialized and ready.
 	 *
-	 * Implementation of IAgentClient.isInitialized()
+	 * Implementation of IAgentManager.isInitialized()
 	 */
 	isInitialized(): boolean {
 		return (
@@ -829,7 +829,7 @@ export class AcpAdapter implements IAgentClient, IAcpClient {
 	/**
 	 * Get the ID of the currently connected agent.
 	 *
-	 * Implementation of IAgentClient.getCurrentAgentId()
+	 * Implementation of IAgentManager.getCurrentAgentId()
 	 */
 	getCurrentAgentId(): string | null {
 		return this.currentAgentId;
@@ -843,7 +843,7 @@ export class AcpAdapter implements IAgentClient, IAcpClient {
 	 * Changes the agent's operating mode for the current session.
 	 * The agent will confirm the mode change via a current_mode_update notification.
 	 *
-	 * Implementation of IAgentClient.setSessionMode()
+	 * Implementation of IAgentManager.setSessionMode()
 	 */
 	async setSessionMode(sessionId: string, modeId: string): Promise<void> {
 		if (!this.connection) {
@@ -874,7 +874,7 @@ export class AcpAdapter implements IAgentClient, IAcpClient {
 	/**
 	 * DEPRECATED: Use setSessionConfigOption instead.
 	 *
-	 * Implementation of IAgentClient.setSessionModel()
+	 * Implementation of IAgentManager.setSessionModel()
 	 */
 	async setSessionModel(sessionId: string, modelId: string): Promise<void> {
 		if (!this.connection) {

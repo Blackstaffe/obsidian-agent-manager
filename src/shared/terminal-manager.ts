@@ -1,6 +1,6 @@
 import { spawn, ChildProcess, SpawnOptions } from "child_process";
 import * as acp from "@agentclientprotocol/sdk";
-import type AgentClientPlugin from "../plugin";
+import type AgentManagerPlugin from "../plugin";
 import { getLogger, Logger } from "./logger";
 import { Platform } from "obsidian";
 import { wrapCommandForWsl } from "./wsl-utils";
@@ -23,9 +23,9 @@ interface TerminalProcess {
 export class TerminalManager {
 	private terminals = new Map<string, TerminalProcess>();
 	private logger: Logger;
-	private plugin: AgentClientPlugin;
+	private plugin: AgentManagerPlugin;
 
-	constructor(plugin: AgentClientPlugin) {
+	constructor(plugin: AgentManagerPlugin) {
 		this.logger = getLogger();
 		this.plugin = plugin;
 	}
@@ -35,7 +35,7 @@ export class TerminalManager {
 
 		// Check current platform
 		if (!Platform.isDesktopApp) {
-			throw new Error("Agent Client is only available on desktop");
+			throw new Error("Agent Manager is only available on desktop");
 		}
 
 		// Set up environment variables

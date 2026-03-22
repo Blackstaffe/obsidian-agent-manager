@@ -53,14 +53,14 @@ export function ErrorOverlay({
 
 	return (
 		<div
-			className={`agent-client-error-overlay agent-client-error-overlay--${variant}`}
+			className={`agent-manager-error-overlay agent-manager-error-overlay--${variant}`}
 		>
-			<div className="agent-client-error-overlay-header">
-				<h4 className="agent-client-error-overlay-title">
+			<div className="agent-manager-error-overlay-header">
+				<h4 className="agent-manager-error-overlay-title">
 					{errorInfo.title}
 				</h4>
 				<button
-					className="agent-client-error-overlay-close"
+					className="agent-manager-error-overlay-close"
 					onClick={onClose}
 					aria-label="Close"
 					type="button"
@@ -71,14 +71,14 @@ export function ErrorOverlay({
 					}}
 				/>
 			</div>
-			<p className="agent-client-error-overlay-message">
+			<p className="agent-manager-error-overlay-message">
 				{errorInfo.message}
 			</p>
 			{errorInfo.suggestion && (
-				<div className="agent-client-error-overlay-suggestion">
+				<div className="agent-manager-error-overlay-suggestion">
 					{showEmojis && variant === "error" && "💡 "}
 					{variant !== "error" ? (
-						<code className="agent-client-error-overlay-code">
+						<code className="agent-manager-error-overlay-code">
 							{errorInfo.suggestion}
 						</code>
 					) : (

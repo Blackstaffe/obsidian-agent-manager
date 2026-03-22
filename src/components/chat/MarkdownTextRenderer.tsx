@@ -1,11 +1,11 @@
 import * as React from "react";
 const { useRef, useEffect } = React;
 import { Component, MarkdownRenderer } from "obsidian";
-import type AgentClientPlugin from "../../plugin";
+import type AgentManagerPlugin from "../../plugin";
 
 interface MarkdownTextRendererProps {
 	text: string;
-	plugin: AgentClientPlugin;
+	plugin: AgentManagerPlugin;
 }
 
 export function MarkdownTextRenderer({
@@ -50,7 +50,7 @@ export function MarkdownTextRenderer({
 	return (
 		<div
 			ref={containerRef}
-			className="agent-client-markdown-text-renderer"
+			className="agent-manager-markdown-text-renderer"
 		/>
 	);
 }

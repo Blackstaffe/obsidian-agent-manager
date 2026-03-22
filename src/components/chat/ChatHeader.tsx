@@ -39,18 +39,18 @@ export function ChatHeader({
 	onOpenHistory,
 }: ChatHeaderProps) {
 	return (
-		<div className="agent-client-chat-view-header">
-			<div className="agent-client-chat-view-header-main">
-				<h3 className="agent-client-chat-view-header-title">
+		<div className="agent-manager-chat-view-header">
+			<div className="agent-manager-chat-view-header-main">
+				<h3 className="agent-manager-chat-view-header-title">
 					{agentLabel}
 				</h3>
 			</div>
 			{isUpdateAvailable && (
-				<p className="agent-client-chat-view-header-update">
+				<p className="agent-manager-chat-view-header-update">
 					Plugin update available!
 				</p>
 			)}
-			<div className="agent-client-chat-view-header-actions">
+			<div className="agent-manager-chat-view-header-actions">
 				<HeaderButton
 					iconName="plus"
 					tooltip="New chat"
