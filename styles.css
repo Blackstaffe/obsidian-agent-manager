@@ -2310,3 +2310,495 @@ If your plugin does not need CSS, delete this file.
 	color: var(--text-normal);
 	font-size: 12px;
 }
+
+/* ===== Agent Panel (Left Sidebar) ===== */
+.agent-panel-container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow-y: auto;
+}
+
+.agent-panel-list {
+	padding: 4px 0;
+}
+
+.agent-panel-section-header {
+	padding: 4px 12px 2px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--text-muted);
+	margin-top: 8px;
+}
+
+.agent-panel-item {
+	cursor: pointer;
+}
+
+.agent-panel-item-title {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 8px;
+	border-radius: var(--radius-s);
+	color: var(--nav-item-color);
+	font-size: var(--nav-item-size);
+}
+
+.agent-panel-item-title:hover {
+	background-color: var(--nav-item-background-hover);
+	color: var(--nav-item-color-hover);
+}
+
+.agent-panel-collapse-icon {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	color: var(--nav-collapse-icon-color);
+}
+
+.agent-panel-collapse-icon .agent-panel-icon {
+	display: flex;
+	align-items: center;
+}
+
+.agent-panel-collapse-icon svg {
+	width: 10px;
+	height: 10px;
+}
+
+.agent-panel-item-name {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.agent-panel-item-status {
+	font-size: 10px;
+	text-transform: capitalize;
+	flex-shrink: 0;
+}
+
+.agent-panel-item-detail {
+	padding: 2px 12px 4px 30px;
+	font-size: var(--font-smaller);
+	color: var(--text-muted);
+}
+
+.agent-panel-item-schedule {
+	color: var(--color-blue);
+}
+
+.agent-panel-empty {
+	padding: 24px 12px;
+	text-align: center;
+	color: var(--text-faint);
+	font-size: var(--font-smaller);
+}
+
+/* ===== Agent Run View ===== */
+
+.agent-run-container {
+	display: flex;
+	height: 100%;
+	overflow: hidden;
+}
+
+/* Settings pane */
+.agent-run-settings-pane {
+	width: 260px;
+	min-width: 200px;
+	max-width: 340px;
+	border-right: 1px solid var(--background-modifier-border);
+	overflow-y: auto;
+	flex-shrink: 0;
+}
+
+.agent-settings-container {
+	padding: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.agent-settings-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: var(--font-smaller);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--text-muted);
+	padding-bottom: 4px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.agent-settings-section-icon {
+	display: flex;
+	align-items: center;
+}
+
+.agent-settings-section-icon svg {
+	width: 12px;
+	height: 12px;
+}
+
+.agent-settings-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	position: relative;
+}
+
+.agent-settings-label {
+	font-size: var(--font-smaller);
+	font-weight: 500;
+	color: var(--text-muted);
+}
+
+.agent-settings-input {
+	background: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	padding: 4px 8px;
+	font-size: var(--font-small);
+	color: var(--text-normal);
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.agent-settings-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+}
+
+.agent-settings-hint {
+	font-size: 11px;
+	color: var(--text-faint);
+}
+
+/* File picker */
+.agent-settings-file-picker {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
+.agent-settings-file-picker .agent-settings-input {
+	padding-right: 24px;
+}
+
+.agent-settings-clear {
+	position: absolute;
+	right: 4px;
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: var(--text-muted);
+	font-size: 14px;
+	line-height: 1;
+	padding: 0 2px;
+}
+
+.agent-settings-suggestions {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	z-index: 100;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	box-shadow: var(--shadow-s);
+	overflow: hidden;
+}
+
+.agent-settings-suggestion-item {
+	padding: 6px 10px;
+	font-size: var(--font-small);
+	cursor: pointer;
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 8px;
+}
+
+.agent-settings-suggestion-item:hover {
+	background: var(--background-modifier-hover);
+}
+
+.agent-settings-suggestion-path {
+	font-size: 10px;
+	color: var(--text-faint);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100px;
+}
+
+/* Tag list */
+.agent-settings-tag-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	min-height: 24px;
+}
+
+.agent-settings-tag {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	background: var(--background-modifier-hover);
+	border-radius: var(--radius-s);
+	padding: 2px 6px;
+	font-size: 11px;
+	color: var(--text-normal);
+}
+
+.agent-settings-tag-remove {
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: var(--text-muted);
+	font-size: 12px;
+	line-height: 1;
+	padding: 0;
+}
+
+.agent-settings-tag-input-row {
+	display: flex;
+	gap: 6px;
+}
+
+.agent-settings-tag-input-row .agent-settings-input {
+	flex: 1;
+}
+
+.agent-settings-add-btn {
+	padding: 4px 10px;
+	font-size: var(--font-smaller);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+/* Chat pane */
+.agent-run-chat-pane {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.agent-run-chat-container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: hidden;
+}
+
+.agent-run-chat-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 14px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+.agent-run-chat-title {
+	font-weight: 600;
+	font-size: var(--font-small);
+	color: var(--text-normal);
+}
+
+.agent-run-chat-run-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: var(--radius-s);
+	color: var(--text-muted);
+}
+
+.agent-run-chat-run-btn:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.agent-run-chat-run-btn.is-running {
+	color: var(--color-orange);
+}
+
+.agent-run-chat-messages {
+	flex: 1;
+	overflow-y: auto;
+	padding: 12px 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.agent-run-chat-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	gap: 8px;
+	color: var(--text-faint);
+	text-align: center;
+}
+
+.agent-run-chat-empty-text {
+	font-size: var(--font-small);
+	max-width: 260px;
+}
+
+.agent-run-chat-empty-hint {
+	font-size: 11px;
+	color: var(--text-faint);
+}
+
+.agent-run-chat-msg {
+	max-width: 85%;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.agent-run-chat-msg--user {
+	align-self: flex-end;
+}
+
+.agent-run-chat-msg--assistant {
+	align-self: flex-start;
+}
+
+.agent-run-chat-msg-body {
+	background: var(--background-modifier-form-field);
+	border-radius: var(--radius-m);
+	padding: 8px 12px;
+	font-size: var(--font-small);
+	color: var(--text-normal);
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.agent-run-chat-msg--user .agent-run-chat-msg-body {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.agent-run-chat-msg-ts {
+	font-size: 10px;
+	color: var(--text-faint);
+	padding: 0 4px;
+}
+
+.agent-run-chat-msg--user .agent-run-chat-msg-ts {
+	text-align: right;
+}
+
+/* Typing indicator */
+.agent-run-chat-typing {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 10px 14px;
+}
+
+.agent-run-chat-typing span {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--text-muted);
+	animation: agent-run-typing-bounce 1.2s infinite;
+}
+
+.agent-run-chat-typing span:nth-child(2) {
+	animation-delay: 0.2s;
+}
+
+.agent-run-chat-typing span:nth-child(3) {
+	animation-delay: 0.4s;
+}
+
+@keyframes agent-run-typing-bounce {
+	0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+	40% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* Input row */
+.agent-run-chat-input-row {
+	display: flex;
+	align-items: flex-end;
+	gap: 8px;
+	padding: 10px 14px;
+	border-top: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+.agent-run-chat-input {
+	flex: 1;
+	background: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	padding: 8px 12px;
+	font-size: var(--font-small);
+	color: var(--text-normal);
+	resize: none;
+	overflow-y: auto;
+	font-family: inherit;
+	line-height: 1.5;
+}
+
+.agent-run-chat-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+}
+
+.agent-run-chat-send {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	border-radius: var(--radius-m);
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	flex-shrink: 0;
+}
+
+.agent-run-chat-send:disabled {
+	background: var(--background-modifier-border);
+	color: var(--text-faint);
+	cursor: not-allowed;
+}
+
+.agent-run-chat-send-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+.agent-run-empty {
+	padding: 24px;
+	color: var(--text-faint);
+	text-align: center;
+}
+
+/* ===== Agent Detail Modal ===== */
+.agent-detail-meta {
+	margin-top: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	color: var(--text-muted);
+	font-size: 13px;
+}

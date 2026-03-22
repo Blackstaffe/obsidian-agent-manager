@@ -4,10 +4,14 @@ import {
 	WorkspaceSplit,
 	Notice,
 	requestUrl,
+	addIcon,
 } from "obsidian";
 import type { Root } from "react-dom/client";
 import * as semver from "semver";
 import { ChatView, VIEW_TYPE_CHAT } from "./components/chat/ChatView";
+import { AgentPanelView, VIEW_TYPE_AGENT_PANEL } from "./components/agentpanel/AgentPanelView";
+import { AgentRunView, VIEW_TYPE_AGENT_RUN } from "./components/agentrun/AgentRunView";
+import type { ManagedAgent } from "./domain/models/managed-agent";
 import {
 	createFloatingChat,
 	FloatingViewContainer,
@@ -104,6 +108,8 @@ export interface AgentManagerPluginSettings {
 	lastUsedModels: Record<string, string>;
 	// Last used mode per agent (agentId → modeId)
 	lastUsedModes: Record<string, string>;
+	/** Managed autonomous agents */
+	managedAgents: ManagedAgent[];
 	// Floating chat settings
 	enableFloatingChat: boolean;
 	floatingButtonImage: string;
@@ -169,6 +175,7 @@ const DEFAULT_SETTINGS: AgentManagerPluginSettings = {
 	savedSessions: [],
 	lastUsedModels: {},
 	lastUsedModes: {},
+	managedAgents: [],
 	enableFloatingChat: false,
 	floatingButtonImage: "",
 	floatingWindowSize: { width: 400, height: 500 },
@@ -196,6 +203,8 @@ export default class AgentManagerPlugin extends Plugin {
 	private floatingChatCounter = 0;
 
 	async onload() {
+		addIcon("birdhouse", '<g transform="scale(4.1667)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12 18v4"/><path d="m17 18 1.956-11.468"/><path d="m3 8 7.82-5.615a2 2 0 0 1 2.36 0L21 8"/><path d="M4 18h16"/><path d="M7 18 5.044 6.532"/><circle cx="12" cy="10" r="2"/></g>');
+
 		await this.loadSettings();
 
 		initializeLogger(this.settings);
@@ -204,6 +213,12 @@ export default class AgentManagerPlugin extends Plugin {
 		this.settingsStore = createSettingsStore(this.settings, this);
 
 		this.registerView(VIEW_TYPE_CHAT, (leaf) => new ChatView(leaf, this));
+		this.registerView(VIEW_TYPE_AGENT_PANEL, (leaf) => new AgentPanelView(leaf, this));
+		this.registerView(VIEW_TYPE_AGENT_RUN, (leaf) => new AgentRunView(leaf, this));
+
+		this.app.workspace.onLayoutReady(() => {
+			void this.activateAgentPanel();
+		});
 
 		const ribbonIconEl = this.addRibbonIcon(
 			"bird",
@@ -447,6 +462,15 @@ export default class AgentManagerPlugin extends Plugin {
 		if (leaf) {
 			await workspace.revealLeaf(leaf);
 			this.focusTextarea(leaf);
+		}
+	}
+
+	async activateAgentPanel() {
+		const { workspace } = this.app;
+		if (workspace.getLeavesOfType(VIEW_TYPE_AGENT_PANEL).length > 0) return;
+		const leaf = workspace.getLeftLeaf(false);
+		if (leaf) {
+			await leaf.setViewState({ type: VIEW_TYPE_AGENT_PANEL, active: false });
 		}
 	}
 
@@ -1222,6 +1246,9 @@ export default class AgentManagerPlugin extends Plugin {
 				}
 				return null;
 			})(),
+			managedAgents: Array.isArray(rawSettings.managedAgents)
+				? (rawSettings.managedAgents as ManagedAgent[])
+				: [],
 		};
 
 		this.ensureDefaultAgentId();

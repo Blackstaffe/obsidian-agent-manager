@@ -1,0 +1,240 @@
+import { ItemView, WorkspaceLeaf, setIcon } from "obsidian";
+import * as React from "react";
+const { useState, useRef, useEffect, useCallback } = React;
+import { createRoot, Root } from "react-dom/client";
+import type AgentManagerPlugin from "../../plugin";
+import type { ManagedAgent } from "../../domain/models/managed-agent";
+import { createManagedAgent } from "../../domain/models/managed-agent";
+import {
+	AgentRunView,
+	VIEW_TYPE_AGENT_RUN,
+} from "../agentrun/AgentRunView";
+
+export const VIEW_TYPE_AGENT_PANEL = "agent-manager-panel";
+
+// ── Icon helper ──────────────────────────────────────────────────────────────
+
+function IconEl({ name }: { name: string }) {
+	const ref = useRef<HTMLSpanElement>(null);
+	useEffect(() => {
+		if (ref.current) setIcon(ref.current, name);
+	}, [name]);
+	return <span ref={ref} className="agent-panel-icon" />;
+}
+
+function NavButton({
+	icon,
+	label,
+	onClick,
+}: {
+	icon: string;
+	label: string;
+	onClick: () => void;
+}) {
+	const ref = useRef<HTMLButtonElement>(null);
+	useEffect(() => {
+		if (ref.current) setIcon(ref.current, icon);
+	}, [icon]);
+	return (
+		<button
+			ref={ref}
+			className="clickable-icon nav-action-button"
+			aria-label={label}
+			onClick={onClick}
+		/>
+	);
+}
+
+// ── Agent row ────────────────────────────────────────────────────────────────
+
+const STATUS_COLOURS: Record<ManagedAgent["status"], string> = {
+	idle: "var(--text-muted)",
+	running: "var(--color-green)",
+	scheduled: "var(--color-blue)",
+};
+
+function AgentRow({
+	agent,
+	onOpen,
+}: {
+	agent: ManagedAgent;
+	onOpen: (agent: ManagedAgent) => void;
+}) {
+	const [expanded, setExpanded] = useState(false);
+
+	return (
+		<div className="agent-panel-item">
+			<div
+				className="agent-panel-item-title"
+				onClick={() => setExpanded((v) => !v)}
+				onDoubleClick={() => onOpen(agent)}
+			>
+				<span className="agent-panel-collapse-icon">
+					<IconEl
+						name={expanded ? "chevron-down" : "chevron-right"}
+					/>
+				</span>
+				<span className="agent-panel-item-name">{agent.name}</span>
+				<span
+					className="agent-panel-item-status"
+					style={{ color: STATUS_COLOURS[agent.status] }}
+				>
+					{agent.status}
+				</span>
+			</div>
+			{expanded && (
+				<div className="agent-panel-item-detail">
+					{agent.instructionsPath
+						? `Instructions: ${agent.instructionsPath}`
+						: "No instructions set"}
+					{agent.schedule && (
+						<span className="agent-panel-item-schedule">
+							{" · "}
+							{agent.schedule}
+						</span>
+					)}
+				</div>
+			)}
+		</div>
+	);
+}
+
+// ── Panel component ──────────────────────────────────────────────────────────
+
+function AgentPanel({
+	plugin,
+	onOpenAgent,
+	onNewAgent,
+}: {
+	plugin: AgentManagerPlugin;
+	onOpenAgent: (agent: ManagedAgent) => void;
+	onNewAgent: () => void;
+}) {
+	const [agents, setAgents] = useState<ManagedAgent[]>(
+		plugin.settings.managedAgents ?? [],
+	);
+
+	// Keep list in sync when plugin settings change
+	useEffect(() => {
+		setAgents(plugin.settings.managedAgents ?? []);
+	}, [plugin.settings.managedAgents]);
+
+	const onDemand = agents.filter((a) => !a.schedule);
+	const scheduled = agents.filter((a) => a.schedule);
+
+	return (
+		<div className="agent-panel-container">
+			<div className="nav-header">
+				<div className="nav-buttons-container">
+					<NavButton
+						icon="plus"
+						label="New agent"
+						onClick={onNewAgent}
+					/>
+					<NavButton
+						icon="refresh-cw"
+						label="Refresh"
+						onClick={() =>
+							setAgents([...plugin.settings.managedAgents])
+						}
+					/>
+				</div>
+			</div>
+			<div className="agent-panel-list">
+				{onDemand.length === 0 && scheduled.length === 0 && (
+					<div className="agent-panel-empty">
+						No agents yet. Press + to create one.
+					</div>
+				)}
+				{onDemand.map((agent) => (
+					<AgentRow
+						key={agent.id}
+						agent={agent}
+						onOpen={onOpenAgent}
+					/>
+				))}
+				{scheduled.length > 0 && (
+					<>
+						<div className="agent-panel-section-header">
+							Scheduled
+						</div>
+						{scheduled.map((agent) => (
+							<AgentRow
+								key={agent.id}
+								agent={agent}
+								onOpen={onOpenAgent}
+							/>
+						))}
+					</>
+				)}
+			</div>
+		</div>
+	);
+}
+
+// ── Obsidian view ────────────────────────────────────────────────────────────
+
+export class AgentPanelView extends ItemView {
+	private root: Root | null = null;
+	private plugin: AgentManagerPlugin;
+
+	constructor(leaf: WorkspaceLeaf, plugin: AgentManagerPlugin) {
+		super(leaf);
+		this.plugin = plugin;
+	}
+
+	getViewType(): string {
+		return VIEW_TYPE_AGENT_PANEL;
+	}
+
+	getDisplayText(): string {
+		return "Agent Manager";
+	}
+
+	getIcon(): string {
+		return "birdhouse";
+	}
+
+	private async openAgentRunView(agent: ManagedAgent) {
+		const leaf = this.app.workspace.getLeaf("tab");
+		await leaf.setViewState({
+			type: VIEW_TYPE_AGENT_RUN,
+			active: true,
+			state: { agentId: agent.id },
+		});
+		this.app.workspace.revealLeaf(leaf);
+	}
+
+	private async createAndOpenAgent() {
+		const agent = createManagedAgent();
+		if (!this.plugin.settings.managedAgents) {
+			this.plugin.settings.managedAgents = [];
+		}
+		this.plugin.settings.managedAgents.push(agent);
+		await this.plugin.saveSettings();
+		await this.openAgentRunView(agent);
+		// Re-render panel
+		this.remount();
+	}
+
+	private remount() {
+		if (!this.root) return;
+		this.root.render(
+			<AgentPanel
+				plugin={this.plugin}
+				onOpenAgent={(a) => void this.openAgentRunView(a)}
+				onNewAgent={() => void this.createAndOpenAgent()}
+			/>,
+		);
+	}
+
+	async onOpen() {
+		this.root = createRoot(this.containerEl.children[1]);
+		this.remount();
+	}
+
+	async onClose() {
+		this.root?.unmount();
+		this.root = null;
+	}
+}
