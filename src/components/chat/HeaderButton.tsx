@@ -6,10 +6,11 @@ interface HeaderButtonProps {
 	iconName: string;
 	tooltip: string;
 	onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+	disabled?: boolean;
 }
 
 export const HeaderButton = forwardRef<HTMLButtonElement, HeaderButtonProps>(
-	function HeaderButton({ iconName, tooltip, onClick }, ref) {
+	function HeaderButton({ iconName, tooltip, onClick, disabled }, ref) {
 		const buttonRef = useRef<HTMLButtonElement>(null);
 
 		// Expose the button ref to parent components
@@ -26,7 +27,8 @@ export const HeaderButton = forwardRef<HTMLButtonElement, HeaderButtonProps>(
 				ref={buttonRef}
 				title={tooltip}
 				onClick={onClick}
-				className="agent-manager-header-button"
+				disabled={disabled}
+				className={`agent-manager-header-button${disabled ? " is-disabled" : ""}`}
 			/>
 		);
 	},

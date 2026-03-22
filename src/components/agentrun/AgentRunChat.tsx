@@ -1,194 +1,289 @@
 import * as React from "react";
-const { useState, useRef, useEffect } = React;
-import { setIcon } from "obsidian";
-import type AgentManagerPlugin from "../../plugin";
-import type { ManagedAgent } from "../../domain/models/managed-agent";
+const { useRef, useCallback, useMemo } = React;
+import { Menu } from "obsidian";
 
-interface ChatMsg {
-	id: string;
-	role: "user" | "assistant" | "system";
-	text: string;
-	ts: number;
-}
+import type AgentManagerPlugin from "../../plugin";
+import type { IChatViewHost } from "../chat/types";
+import type { IAcpClient } from "../../adapters/acp/acp.adapter";
+import type { AttachedFile } from "../../domain/models/chat-input-state";
+
+import { useChatController } from "../../hooks/useChatController";
+import { ChatHeader } from "../chat/ChatHeader";
+import { ChatMessages } from "../chat/ChatMessages";
+import { ChatInput } from "../chat/ChatInput";
+import { HeaderButton } from "../chat/HeaderButton";
 
 interface AgentRunChatProps {
-	agent: ManagedAgent;
 	plugin: AgentManagerPlugin;
+	viewId: string;
+	view: IChatViewHost;
+	/** Vault-relative path to the instruction markdown file */
+	instructionsPath: string | null;
+	/** Display name of the managed agent */
+	agentName: string;
 }
 
-function SendIcon() {
-	const ref = useRef<HTMLSpanElement>(null);
-	useEffect(() => {
-		if (ref.current) setIcon(ref.current, "send");
-	}, []);
-	return <span ref={ref} className="agent-run-chat-send-icon" />;
-}
-
-function PlayIcon() {
-	const ref = useRef<HTMLSpanElement>(null);
-	useEffect(() => {
-		if (ref.current) setIcon(ref.current, "play");
-	}, []);
-	return <span ref={ref} />;
-}
-
-function StopIcon() {
-	const ref = useRef<HTMLSpanElement>(null);
-	useEffect(() => {
-		if (ref.current) setIcon(ref.current, "square");
-	}, []);
-	return <span ref={ref} />;
-}
-
-function formatTime(ts: number): string {
-	return new Date(ts).toLocaleTimeString([], {
-		hour: "2-digit",
-		minute: "2-digit",
+export function AgentRunChat({
+	plugin,
+	viewId,
+	view,
+	instructionsPath,
+	agentName,
+}: AgentRunChatProps) {
+	const controller = useChatController({
+		plugin,
+		viewId,
 	});
-}
 
-export function AgentRunChat({ agent }: AgentRunChatProps) {
-	const [messages, setMessages] = useState<ChatMsg[]>([]);
-	const [input, setInput] = useState("");
-	const [running, setRunning] = useState(false);
-	const messagesEndRef = useRef<HTMLDivElement>(null);
-	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const {
+		acpAdapter,
+		settings,
+		session,
+		isSessionReady,
+		isUpdateAvailable,
+		messages,
+		isSending,
+		permission,
+		mentions,
+		slashCommands,
+		autoMention,
+		sessionHistory,
+		activeAgentLabel,
+		availableAgents,
+		errorInfo,
+		agentUpdateNotification,
+		handleSendMessage,
+		handleStopGeneration,
+		handleNewChat,
+		handleExportChat,
+		handleRestartAgent,
+		handleOpenHistory,
+		handleClearError,
+		handleClearAgentUpdate,
+		handleSetMode,
+		handleSetModel,
+		handleSetConfigOption,
+		inputValue,
+		setInputValue,
+		attachedFiles,
+		setAttachedFiles,
+		restoredMessage,
+		handleRestoredMessageConsumed,
+	} = controller;
 
-	const scrollToBottom = () => {
-		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	};
+	const acpClientRef = useRef<IAcpClient>(acpAdapter);
 
-	useEffect(() => {
-		scrollToBottom();
-	}, [messages]);
+	/** Track whether instruction file has been sent in this session */
+	const instructionsSentRef = useRef(false);
+	/** Track whether agent run has been started (for resume logic) */
+	const hasStartedRef = useRef(false);
 
-	// Reset chat when agent changes
-	useEffect(() => {
-		setMessages([]);
-		setInput("");
-		setRunning(false);
-	}, [agent.id]);
-
-	const send = () => {
-		const text = input.trim();
-		if (!text || running) return;
-
-		const userMsg: ChatMsg = {
-			id: crypto.randomUUID(),
-			role: "user",
-			text,
-			ts: Date.now(),
-		};
-		setMessages((prev) => [...prev, userMsg]);
-		setInput("");
-		setRunning(true);
-
-		// Placeholder response — to be wired to ACP in a future step
-		setTimeout(() => {
-			const reply: ChatMsg = {
-				id: crypto.randomUUID(),
-				role: "assistant",
-				text: `Running agent "${agent.name}"…\n\nThis chat will be connected to the ACP session in a future update.`,
-				ts: Date.now(),
-			};
-			setMessages((prev) => [...prev, reply]);
-			setRunning(false);
-		}, 800);
-	};
-
-	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-		if (e.key === "Enter" && !e.shiftKey) {
-			e.preventDefault();
-			send();
+	// Reset flags when the session restarts (messages cleared)
+	React.useEffect(() => {
+		if (messages.length === 0) {
+			instructionsSentRef.current = false;
+			hasStartedRef.current = false;
 		}
-	};
+	}, [messages.length]);
 
-	const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-		setInput(e.target.value);
-		// Auto-resize
-		const el = e.target;
-		el.style.height = "auto";
-		el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
-	};
+	// ── Wrap sendMessage to inject instructions as context prefix ─
+	const handleSendWithInstructions = useCallback(
+		async (content: string, attachments?: AttachedFile[]) => {
+			let contextPrefix: string | undefined;
 
-	const isEmpty = messages.length === 0;
+			if (
+				!instructionsSentRef.current &&
+				instructionsPath &&
+				messages.length === 0
+			) {
+				instructionsSentRef.current = true;
+
+				try {
+					const fileContent =
+						await plugin.app.vault.adapter.read(instructionsPath);
+					if (fileContent) {
+						contextPrefix =
+							`<agent_instructions source="${instructionsPath}">\n` +
+							fileContent +
+							`\n</agent_instructions>`;
+					}
+				} catch (err) {
+					console.warn(
+						`[AgentRunChat] Failed to read instructions file: ${instructionsPath}`,
+						err,
+					);
+				}
+			}
+
+			await handleSendMessage(content, attachments, contextPrefix);
+		},
+		[handleSendMessage, instructionsPath, messages.length, plugin.app.vault],
+	);
+
+	// ── Header menu with agent switching ─────────────────────────
+	const handleShowMenu = useCallback(
+		(e: React.MouseEvent<HTMLButtonElement>) => {
+			const menu = new Menu();
+
+			// Switch agent section
+			menu.addItem((item) => {
+				item.setTitle("Switch agent").setIsLabel(true);
+			});
+
+			for (const agent of availableAgents) {
+				menu.addItem((item) => {
+					item.setTitle(agent.displayName)
+						.setChecked(agent.id === (session.agentId || ""))
+						.onClick(() => {
+							void handleNewChat(agent.id);
+						});
+				});
+			}
+
+			menu.addSeparator();
+
+			menu.addItem((item) => {
+				item.setTitle("Restart agent")
+					.setIcon("refresh-cw")
+					.onClick(() => {
+						void handleRestartAgent();
+					});
+			});
+
+			menu.showAtMouseEvent(e.nativeEvent);
+		},
+		[
+			availableAgents,
+			session.agentId,
+			handleNewChat,
+			handleRestartAgent,
+		],
+	);
+
+	// ── Run button (send-only, greys out while agent is working) ─
+	const handleRun = useCallback(async () => {
+		if (!instructionsPath || isSending) return;
+
+		// Resume: agent was already started, just tell it to continue
+		if (hasStartedRef.current) {
+			await handleSendWithInstructions(
+				"Continue executing the instructions from where you left off.",
+			);
+			return;
+		}
+
+		// First run: inject instructions as context prefix
+		try {
+			const fileContent =
+				await plugin.app.vault.adapter.read(instructionsPath);
+			if (!fileContent) return;
+
+			const contextPrefix =
+				`<agent_instructions source="${instructionsPath}">\n` +
+				fileContent +
+				`\n</agent_instructions>`;
+
+			instructionsSentRef.current = true;
+			hasStartedRef.current = true;
+			await handleSendMessage(
+				"Execute the instructions provided.",
+				undefined,
+				contextPrefix,
+			);
+		} catch (err) {
+			console.warn(
+				`[AgentRunChat] Failed to read instructions for run: ${instructionsPath}`,
+				err,
+			);
+		}
+	}, [isSending, instructionsPath, handleSendMessage, handleSendWithInstructions, plugin.app.vault]);
+
+	const runButton = useMemo(
+		() =>
+			instructionsPath ? (
+				<HeaderButton
+					iconName="play"
+					tooltip={isSending ? "Running…" : "Run instructions"}
+					onClick={handleRun}
+					disabled={isSending}
+				/>
+			) : null,
+		[isSending, instructionsPath, handleRun],
+	);
+
+	const chatFontSizeStyle =
+		settings.displaySettings.fontSize !== null
+			? ({
+					"--ac-chat-font-size": `${settings.displaySettings.fontSize}px`,
+				} as React.CSSProperties)
+			: undefined;
 
 	return (
-		<div className="agent-run-chat-container">
-			{/* Header */}
-			<div className="agent-run-chat-header">
-				<span className="agent-run-chat-title">{agent.name}</span>
-				<button
-					className={`agent-run-chat-run-btn clickable-icon${running ? " is-running" : ""}`}
-					aria-label={running ? "Stop agent" : "Run agent"}
-					onClick={() => setRunning((v) => !v)}
-				>
-					{running ? <StopIcon /> : <PlayIcon />}
-				</button>
-			</div>
+		<div
+			className="agent-manager-chat-view-container"
+			style={chatFontSizeStyle}
+		>
+			<ChatHeader
+				agentLabel={agentName}
+				isUpdateAvailable={isUpdateAvailable}
+				hasHistoryCapability={sessionHistory.canShowSessionHistory}
+				onNewChat={() => void handleNewChat()}
+				onExportChat={() => void handleExportChat()}
+				onShowMenu={handleShowMenu}
+				onOpenHistory={handleOpenHistory}
+				extraButtons={runButton}
+			/>
 
-			{/* Messages */}
-			<div className="agent-run-chat-messages">
-				{isEmpty && (
-					<div className="agent-run-chat-empty">
-						<div className="agent-run-chat-empty-text">
-							{agent.instructionsPath
-								? `Instructions loaded from ${agent.instructionsPath}`
-								: "No instructions set — configure in the settings pane."}
-						</div>
-						<div className="agent-run-chat-empty-hint">
-							Send a message or press Run to start the agent.
-						</div>
-					</div>
-				)}
-				{messages.map((msg) => (
-					<div
-						key={msg.id}
-						className={`agent-run-chat-msg agent-run-chat-msg--${msg.role}`}
-					>
-						<div className="agent-run-chat-msg-body">
-							{msg.text.split("\n").map((line, i) => (
-								<React.Fragment key={i}>
-									{i > 0 && <br />}
-									{line}
-								</React.Fragment>
-							))}
-						</div>
-						<div className="agent-run-chat-msg-ts">
-							{formatTime(msg.ts)}
-						</div>
-					</div>
-				))}
-				{running && (
-					<div className="agent-run-chat-msg agent-run-chat-msg--assistant">
-						<div className="agent-run-chat-typing">
-							<span /><span /><span />
-						</div>
-					</div>
-				)}
-				<div ref={messagesEndRef} />
-			</div>
+			<ChatMessages
+				messages={messages}
+				isSending={isSending}
+				isSessionReady={isSessionReady}
+				isRestoringSession={sessionHistory.loading}
+				agentLabel={activeAgentLabel}
+				plugin={plugin}
+				view={view}
+				acpClient={acpClientRef.current}
+				onApprovePermission={permission.approvePermission}
+				hasActivePermission={permission.activePermission != null}
+			/>
 
-			{/* Input */}
-			<div className="agent-run-chat-input-row">
-				<textarea
-					ref={textareaRef}
-					className="agent-run-chat-input"
-					placeholder="Send a message…"
-					value={input}
-					rows={1}
-					onChange={handleInput}
-					onKeyDown={handleKeyDown}
-				/>
-				<button
-					className="agent-run-chat-send clickable-icon"
-					aria-label="Send"
-					disabled={!input.trim() || running}
-					onClick={send}
-				>
-					<SendIcon />
-				</button>
-			</div>
+			<ChatInput
+				isSending={isSending}
+				isSessionReady={isSessionReady}
+				isRestoringSession={sessionHistory.loading}
+				agentLabel={activeAgentLabel}
+				availableCommands={session.availableCommands || []}
+				autoMentionEnabled={settings.autoMentionActiveNote}
+				restoredMessage={restoredMessage}
+				mentions={mentions}
+				slashCommands={slashCommands}
+				autoMention={autoMention}
+				plugin={plugin}
+				view={view}
+				onSendMessage={handleSendWithInstructions}
+				onStopGeneration={handleStopGeneration}
+				onRestoredMessageConsumed={handleRestoredMessageConsumed}
+				modes={session.modes}
+				onModeChange={(modeId) => void handleSetMode(modeId)}
+				models={session.models}
+				onModelChange={(modelId) => void handleSetModel(modelId)}
+				configOptions={session.configOptions}
+				onConfigOptionChange={(configId, value) =>
+					void handleSetConfigOption(configId, value)
+				}
+				usage={session.usage}
+				supportsImages={session.promptCapabilities?.image ?? false}
+				agentId={session.agentId}
+				inputValue={inputValue}
+				onInputChange={setInputValue}
+				attachedFiles={attachedFiles}
+				onAttachedFilesChange={setAttachedFiles}
+				errorInfo={errorInfo}
+				onClearError={handleClearError}
+				agentUpdateNotification={agentUpdateNotification}
+				onClearAgentUpdate={handleClearAgentUpdate}
+				messages={messages}
+			/>
 		</div>
 	);
 }

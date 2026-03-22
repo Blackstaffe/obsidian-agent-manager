@@ -1,16 +1,16 @@
-import { ItemView, WorkspaceLeaf, setIcon } from "obsidian";
+import { ItemView, WorkspaceLeaf, setIcon, Menu } from "obsidian";
 import * as React from "react";
-const { useState, useRef, useEffect, useCallback } = React;
+const { useState, useRef, useEffect } = React;
 import { createRoot, Root } from "react-dom/client";
 import type AgentManagerPlugin from "../../plugin";
 import type { ManagedAgent } from "../../domain/models/managed-agent";
 import { createManagedAgent } from "../../domain/models/managed-agent";
-import {
-	AgentRunView,
-	VIEW_TYPE_AGENT_RUN,
-} from "../agentrun/AgentRunView";
+import { VIEW_TYPE_AGENT_RUN } from "../agentrun/AgentRunView";
 
 export const VIEW_TYPE_AGENT_PANEL = "agent-manager-panel";
+
+/** Custom event name fired whenever the managed agents list changes */
+export const AGENTS_CHANGED_EVENT = "agent-manager:agents-changed";
 
 // ── Icon helper ──────────────────────────────────────────────────────────────
 
@@ -56,11 +56,31 @@ const STATUS_COLOURS: Record<ManagedAgent["status"], string> = {
 function AgentRow({
 	agent,
 	onOpen,
+	onDelete,
 }: {
 	agent: ManagedAgent;
 	onOpen: (agent: ManagedAgent) => void;
+	onDelete: (agent: ManagedAgent) => void;
 }) {
 	const [expanded, setExpanded] = useState(false);
+
+	const handleContextMenu = (e: React.MouseEvent) => {
+		e.preventDefault();
+		const menu = new Menu();
+		menu.addItem((item) => {
+			item.setTitle("Open")
+				.setIcon("pencil")
+				.onClick(() => onOpen(agent));
+		});
+		menu.addSeparator();
+		menu.addItem((item) => {
+			item.setTitle("Delete")
+				.setIcon("trash-2")
+				.setWarning(true)
+				.onClick(() => onDelete(agent));
+		});
+		menu.showAtMouseEvent(e.nativeEvent);
+	};
 
 	return (
 		<div className="agent-panel-item">
@@ -68,6 +88,7 @@ function AgentRow({
 				className="agent-panel-item-title"
 				onClick={() => setExpanded((v) => !v)}
 				onDoubleClick={() => onOpen(agent)}
+				onContextMenu={handleContextMenu}
 			>
 				<span className="agent-panel-collapse-icon">
 					<IconEl
@@ -105,19 +126,37 @@ function AgentPanel({
 	plugin,
 	onOpenAgent,
 	onNewAgent,
+	onDeleteAgent,
 }: {
 	plugin: AgentManagerPlugin;
 	onOpenAgent: (agent: ManagedAgent) => void;
 	onNewAgent: () => void;
+	onDeleteAgent: (agent: ManagedAgent) => void;
 }) {
 	const [agents, setAgents] = useState<ManagedAgent[]>(
 		plugin.settings.managedAgents ?? [],
 	);
 
-	// Keep list in sync when plugin settings change
+	// Subscribe to agents-changed events from any source
 	useEffect(() => {
-		setAgents(plugin.settings.managedAgents ?? []);
-	}, [plugin.settings.managedAgents]);
+		const refresh = () => {
+			setAgents([...(plugin.settings.managedAgents ?? [])]);
+		};
+
+		const workspace = plugin.app.workspace;
+		const eventRef = (
+			workspace as unknown as {
+				on: (
+					name: string,
+					callback: () => void,
+				) => ReturnType<typeof workspace.on>;
+			}
+		).on(AGENTS_CHANGED_EVENT, refresh);
+
+		return () => {
+			workspace.offref(eventRef);
+		};
+	}, [plugin]);
 
 	const onDemand = agents.filter((a) => !a.schedule);
 	const scheduled = agents.filter((a) => a.schedule);
@@ -130,13 +169,6 @@ function AgentPanel({
 						icon="plus"
 						label="New agent"
 						onClick={onNewAgent}
-					/>
-					<NavButton
-						icon="refresh-cw"
-						label="Refresh"
-						onClick={() =>
-							setAgents([...plugin.settings.managedAgents])
-						}
 					/>
 				</div>
 			</div>
@@ -151,6 +183,7 @@ function AgentPanel({
 						key={agent.id}
 						agent={agent}
 						onOpen={onOpenAgent}
+						onDelete={onDeleteAgent}
 					/>
 				))}
 				{scheduled.length > 0 && (
@@ -163,6 +196,7 @@ function AgentPanel({
 								key={agent.id}
 								agent={agent}
 								onOpen={onOpenAgent}
+								onDelete={onDeleteAgent}
 							/>
 						))}
 					</>
@@ -195,6 +229,12 @@ export class AgentPanelView extends ItemView {
 		return "birdhouse";
 	}
 
+	/** Fire the workspace event so the panel refreshes */
+	private notifyChanged() {
+		(this.app.workspace as unknown as { trigger: (name: string) => void })
+			.trigger(AGENTS_CHANGED_EVENT);
+	}
+
 	private async openAgentRunView(agent: ManagedAgent) {
 		const leaf = this.app.workspace.getLeaf("tab");
 		await leaf.setViewState({
@@ -213,24 +253,31 @@ export class AgentPanelView extends ItemView {
 		this.plugin.settings.managedAgents.push(agent);
 		await this.plugin.saveSettings();
 		await this.openAgentRunView(agent);
-		// Re-render panel
-		this.remount();
+		this.notifyChanged();
 	}
 
-	private remount() {
+	private async deleteAgent(agent: ManagedAgent) {
+		this.plugin.settings.managedAgents =
+			this.plugin.settings.managedAgents.filter((a) => a.id !== agent.id);
+		await this.plugin.saveSettings();
+		this.notifyChanged();
+	}
+
+	private mount() {
 		if (!this.root) return;
 		this.root.render(
 			<AgentPanel
 				plugin={this.plugin}
 				onOpenAgent={(a) => void this.openAgentRunView(a)}
 				onNewAgent={() => void this.createAndOpenAgent()}
+				onDeleteAgent={(a) => void this.deleteAgent(a)}
 			/>,
 		);
 	}
 
 	async onOpen() {
 		this.root = createRoot(this.containerEl.children[1]);
-		this.remount();
+		this.mount();
 	}
 
 	async onClose() {

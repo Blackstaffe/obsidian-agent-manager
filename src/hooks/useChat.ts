@@ -38,6 +38,8 @@ export interface SendMessageOptions {
 	images?: ImagePromptContent[];
 	/** Attached file references (resource links) */
 	resourceLinks?: ResourceLinkPromptContent[];
+	/** Extra context prepended to agent content only (not shown in UI) */
+	contextPrefix?: string;
 }
 
 /**
@@ -62,6 +64,11 @@ export interface UseChatReturn {
 		content: string,
 		options: SendMessageOptions,
 	) => Promise<void>;
+
+	/**
+	 * Force-reset isSending after a cancel operation.
+	 */
+	cancelSending: () => void;
 
 	/**
 	 * Clear all messages (e.g., when starting a new session).
@@ -501,6 +508,15 @@ export function useChat(
 	);
 
 	/**
+	 * Force-reset the sending state after a cancel operation.
+	 * Needed because the sendPreparedPrompt promise may not resolve
+	 * promptly after an ACP cancel, leaving isSending stuck as true.
+	 */
+	const cancelSending = useCallback((): void => {
+		setIsSending(false);
+	}, []);
+
+	/**
 	 * Clear all messages.
 	 */
 	const clearMessages = useCallback((): void => {
@@ -597,6 +613,7 @@ export function useChat(
 						false,
 					maxNoteLength: settingsContext.maxNoteLength,
 					maxSelectionLength: settingsContext.maxSelectionLength,
+					contextPrefix: options.contextPrefix,
 				},
 				vaultAccess,
 				mentionService,
@@ -714,6 +731,7 @@ export function useChat(
 		lastUserMessage,
 		errorInfo,
 		sendMessage,
+		cancelSending,
 		clearMessages,
 		setInitialMessages,
 		setMessagesFromLocal,

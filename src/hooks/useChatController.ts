@@ -97,6 +97,7 @@ export interface UseChatControllerReturn {
 	handleSendMessage: (
 		content: string,
 		attachments?: AttachedFile[],
+		contextPrefix?: string,
 	) => Promise<void>;
 	handleStopGeneration: () => Promise<void>;
 	handleNewChat: (requestedAgentId?: string) => Promise<void>;
@@ -327,7 +328,7 @@ export function useChatController(
 	const shouldConvertToWsl = Platform.isWin && settings.windowsWslMode;
 
 	const handleSendMessage = useCallback(
-		async (content: string, attachments?: AttachedFile[]) => {
+		async (content: string, attachments?: AttachedFile[], contextPrefix?: string) => {
 			// Dismiss overlays on send
 			chat.clearError();
 			setAgentUpdateNotification(null);
@@ -374,6 +375,7 @@ export function useChatController(
 				images: images.length > 0 ? images : undefined,
 				resourceLinks:
 					resourceLinks.length > 0 ? resourceLinks : undefined,
+				contextPrefix,
 			});
 
 			// Save session metadata locally on first message
@@ -404,10 +406,13 @@ export function useChatController(
 		logger.log("Cancelling current operation...");
 		const lastMessage = chat.lastUserMessage;
 		await agentSession.cancelOperation();
+		// Force-reset isSending — the sendPreparedPrompt promise may not
+		// resolve promptly after an ACP cancel, leaving the UI stuck.
+		chat.cancelSending();
 		if (lastMessage) {
 			setRestoredMessage(lastMessage);
 		}
-	}, [logger, agentSession, chat.lastUserMessage]);
+	}, [logger, agentSession, chat]);
 
 	const handleNewChat = useCallback(
 		async (requestedAgentId?: string) => {

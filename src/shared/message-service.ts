@@ -72,6 +72,9 @@ export interface PreparePromptInput {
 
 	/** Maximum characters for selection (default: 10000) */
 	maxSelectionLength?: number;
+
+	/** Extra context prepended to agent content only (not shown in UI) */
+	contextPrefix?: string;
 }
 
 /**
@@ -264,14 +267,21 @@ async function preparePromptWithEmbeddedContext(
 				: `@[[${input.activeNote.name}]]\n`
 			: "";
 
+	const contextPrefixStr = input.contextPrefix
+		? input.contextPrefix + "\n\n"
+		: "";
+
 	const agentContent: PromptContent[] = [
 		...resourceBlocks,
 		...autoMentionBlocks,
-		...(input.message || autoMentionPrefix
+		...(input.message || autoMentionPrefix || contextPrefixStr
 			? [
 					{
 						type: "text" as const,
-						text: autoMentionPrefix + input.message,
+						text:
+							contextPrefixStr +
+							autoMentionPrefix +
+							input.message,
 					},
 				]
 			: []),
@@ -370,14 +380,18 @@ async function preparePromptWithTextContext(
 				: `@[[${input.activeNote.name}]]\n`
 			: "";
 
-	// Build agent message text (context blocks + auto-mention prefix + original message)
+	// Build agent message text (contextPrefix + context blocks + auto-mention prefix + original message)
+	const contextPrefixStr = input.contextPrefix
+		? input.contextPrefix + "\n\n"
+		: "";
 	const agentMessageText =
-		contextBlocks.length > 0
+		contextPrefixStr +
+		(contextBlocks.length > 0
 			? contextBlocks.join("\n") +
 				"\n\n" +
 				autoMentionPrefix +
 				input.message
-			: autoMentionPrefix + input.message;
+			: autoMentionPrefix + input.message);
 
 	// Build content arrays
 	const displayContent: PromptContent[] = [

@@ -195,6 +195,19 @@ If your plugin does not need CSS, delete this file.
 	color: var(--interactive-accent);
 }
 
+.agent-manager-header-button.is-disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
+}
+
+.agent-manager-header-button.is-disabled:hover {
+	background-color: transparent !important;
+}
+
+.agent-manager-header-button.is-disabled:hover svg {
+	color: var(--text-muted);
+}
+
 /* ===== Message Content Components ===== */
 
 /* Tool Call */
@@ -2407,105 +2420,139 @@ If your plugin does not need CSS, delete this file.
 	overflow: hidden;
 }
 
-/* Settings pane */
-.agent-run-settings-pane {
-	width: 260px;
-	min-width: 200px;
-	max-width: 340px;
-	border-right: 1px solid var(--background-modifier-border);
-	overflow-y: auto;
+.agent-run-container--stacked {
+	flex-direction: column;
+}
+
+/* ── Config panel (acs-*) ──────────────────────────────────────── */
+
+.acs-panel {
+	border-bottom: 1px solid var(--background-modifier-border);
 	flex-shrink: 0;
 }
 
-.agent-settings-container {
-	padding: 12px;
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
-}
-
-.agent-settings-header {
+/* Toggle bar */
+.acs-toggle {
 	display: flex;
 	align-items: center;
 	gap: 6px;
+	padding: 6px 14px;
+	cursor: pointer;
+	user-select: none;
+	color: var(--text-muted);
 	font-size: var(--font-smaller);
 	font-weight: 600;
 	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	color: var(--text-muted);
-	padding-bottom: 4px;
-	border-bottom: 1px solid var(--background-modifier-border);
+	letter-spacing: 0.05em;
 }
 
-.agent-settings-section-icon {
+.acs-toggle:hover {
+	color: var(--text-normal);
+}
+
+.acs-toggle .ac-icon {
 	display: flex;
 	align-items: center;
 }
 
-.agent-settings-section-icon svg {
+.acs-toggle .ac-icon svg {
 	width: 12px;
 	height: 12px;
 }
 
-.agent-settings-field {
+.acs-chevron {
 	display: flex;
-	flex-direction: column;
-	gap: 4px;
+	align-items: center;
+	transition: transform 0.15s ease;
+}
+
+.acs-chevron svg {
+	width: 10px;
+	height: 10px;
+}
+
+.acs-chevron.is-collapsed {
+	transform: rotate(-90deg);
+}
+
+.acs-toggle-label {
+	flex: 1;
+}
+
+/* Grid layout */
+.acs-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 6px 12px;
+	padding: 0 14px 10px;
+}
+
+/* Each row: inline label + control */
+.acs-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 28px;
 	position: relative;
 }
 
-.agent-settings-label {
+.acs-row--wide {
+	grid-column: 1 / -1;
+}
+
+.acs-label {
 	font-size: var(--font-smaller);
 	font-weight: 500;
 	color: var(--text-muted);
+	white-space: nowrap;
+	flex-shrink: 0;
+	min-width: 72px;
 }
 
-.agent-settings-input {
+/* Shared input */
+.acs-input {
+	flex: 1;
 	background: var(--background-modifier-form-field);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-s);
-	padding: 4px 8px;
+	padding: 3px 8px;
 	font-size: var(--font-small);
 	color: var(--text-normal);
-	width: 100%;
+	min-width: 0;
 	box-sizing: border-box;
 }
 
-.agent-settings-input:focus {
+.acs-input:focus {
 	outline: none;
 	border-color: var(--interactive-accent);
-	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
-}
-
-.agent-settings-hint {
-	font-size: 11px;
-	color: var(--text-faint);
+	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
 }
 
 /* File picker */
-.agent-settings-file-picker {
+.acs-file-picker {
+	flex: 1;
 	position: relative;
 	display: flex;
 	align-items: center;
 }
 
-.agent-settings-file-picker .agent-settings-input {
-	padding-right: 24px;
+.acs-file-picker .acs-input {
+	padding-right: 22px;
 }
 
-.agent-settings-clear {
+.acs-clear {
 	position: absolute;
 	right: 4px;
 	background: none;
 	border: none;
 	cursor: pointer;
 	color: var(--text-muted);
-	font-size: 14px;
+	font-size: 13px;
 	line-height: 1;
 	padding: 0 2px;
 }
 
-.agent-settings-suggestions {
+.acs-suggestions {
 	position: absolute;
 	top: 100%;
 	left: 0;
@@ -2516,10 +2563,11 @@ If your plugin does not need CSS, delete this file.
 	border-radius: var(--radius-s);
 	box-shadow: var(--shadow-s);
 	overflow: hidden;
+	margin-top: 2px;
 }
 
-.agent-settings-suggestion-item {
-	padding: 6px 10px;
+.acs-suggestion {
+	padding: 5px 10px;
 	font-size: var(--font-small);
 	cursor: pointer;
 	display: flex;
@@ -2528,63 +2576,80 @@ If your plugin does not need CSS, delete this file.
 	gap: 8px;
 }
 
-.agent-settings-suggestion-item:hover {
+.acs-suggestion:hover {
 	background: var(--background-modifier-hover);
 }
 
-.agent-settings-suggestion-path {
+.acs-suggestion-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.acs-suggestion-path {
 	font-size: 10px;
 	color: var(--text-faint);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	max-width: 100px;
+	max-width: 120px;
+	flex-shrink: 0;
 }
 
 /* Tag list */
-.agent-settings-tag-list {
+.acs-tags {
+	flex: 1;
 	display: flex;
 	flex-wrap: wrap;
+	align-items: center;
 	gap: 4px;
-	min-height: 24px;
+	background: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	padding: 2px 4px;
+	min-height: 26px;
 }
 
-.agent-settings-tag {
+.acs-tags:focus-within {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
+}
+
+.acs-tag {
 	display: inline-flex;
 	align-items: center;
-	gap: 3px;
+	gap: 2px;
 	background: var(--background-modifier-hover);
 	border-radius: var(--radius-s);
-	padding: 2px 6px;
+	padding: 1px 5px;
 	font-size: 11px;
 	color: var(--text-normal);
+	line-height: 1.4;
 }
 
-.agent-settings-tag-remove {
+.acs-tag-x {
 	background: none;
 	border: none;
 	cursor: pointer;
-	color: var(--text-muted);
-	font-size: 12px;
+	color: var(--text-faint);
+	font-size: 11px;
 	line-height: 1;
 	padding: 0;
 }
 
-.agent-settings-tag-input-row {
-	display: flex;
-	gap: 6px;
+.acs-tag-x:hover {
+	color: var(--text-normal);
 }
 
-.agent-settings-tag-input-row .agent-settings-input {
+.acs-tag-input {
 	flex: 1;
-}
-
-.agent-settings-add-btn {
-	padding: 4px 10px;
-	font-size: var(--font-smaller);
-	border-radius: var(--radius-s);
-	cursor: pointer;
-	flex-shrink: 0;
+	border: none;
+	background: transparent;
+	font-size: var(--font-small);
+	color: var(--text-normal);
+	outline: none;
+	padding: 1px 4px;
+	min-width: 60px;
 }
 
 /* Chat pane */

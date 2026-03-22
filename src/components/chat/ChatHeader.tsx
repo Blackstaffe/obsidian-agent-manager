@@ -19,6 +19,8 @@ export interface ChatHeaderProps {
 	onShowMenu: (e: React.MouseEvent<HTMLButtonElement>) => void;
 	/** Callback to open session history */
 	onOpenHistory?: () => void;
+	/** Optional extra buttons rendered before the standard action buttons */
+	extraButtons?: React.ReactNode;
 }
 
 /**
@@ -37,6 +39,7 @@ export function ChatHeader({
 	onExportChat,
 	onShowMenu,
 	onOpenHistory,
+	extraButtons,
 }: ChatHeaderProps) {
 	return (
 		<div className="agent-manager-chat-view-header">
@@ -51,6 +54,7 @@ export function ChatHeader({
 				</p>
 			)}
 			<div className="agent-manager-chat-view-header-actions">
+				{extraButtons}
 				<HeaderButton
 					iconName="plus"
 					tooltip="New chat"

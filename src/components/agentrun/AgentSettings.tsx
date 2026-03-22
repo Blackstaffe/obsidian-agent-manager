@@ -10,21 +10,23 @@ interface AgentSettingsProps {
 	onUpdate: (updates: Partial<ManagedAgent>) => Promise<void>;
 }
 
-function SectionIcon({ name }: { name: string }) {
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function Icon({ name }: { name: string }) {
 	const ref = useRef<HTMLSpanElement>(null);
 	useEffect(() => {
 		if (ref.current) setIcon(ref.current, name);
 	}, [name]);
-	return <span ref={ref} className="agent-settings-section-icon" />;
+	return <span ref={ref} className="ac-icon" />;
 }
 
+// ── Inline file picker ───────────────────────────────────────────────────────
+
 function FilePicker({
-	label,
 	value,
 	plugin,
 	onChange,
 }: {
-	label: string;
 	value: string | null;
 	plugin: AgentManagerPlugin;
 	onChange: (path: string | null) => void;
@@ -50,56 +52,51 @@ function FilePicker({
 		[plugin],
 	);
 
-	// Close on outside click
 	useEffect(() => {
 		const handler = (e: MouseEvent) => {
-			if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+			if (wrapRef.current && !wrapRef.current.contains(e.target as Node))
 				setOpen(false);
-			}
 		};
 		document.addEventListener("mousedown", handler);
 		return () => document.removeEventListener("mousedown", handler);
 	}, []);
 
 	return (
-		<div className="agent-settings-field" ref={wrapRef}>
-			<label className="agent-settings-label">{label}</label>
-			<div className="agent-settings-file-picker">
-				<input
-					className="agent-settings-input"
-					type="text"
-					placeholder="Search vault files…"
-					value={query}
-					onChange={(e) => {
-						setQuery(e.target.value);
-						search(e.target.value);
-						setOpen(true);
+		<div className="acs-file-picker" ref={wrapRef}>
+			<input
+				className="acs-input"
+				type="text"
+				placeholder="Search vault files…"
+				value={query}
+				onChange={(e) => {
+					setQuery(e.target.value);
+					search(e.target.value);
+					setOpen(true);
+				}}
+				onFocus={() => {
+					search(query);
+					setOpen(true);
+				}}
+			/>
+			{value && (
+				<button
+					className="acs-clear clickable-icon"
+					aria-label="Clear"
+					onClick={() => {
+						setQuery("");
+						setSuggestions([]);
+						onChange(null);
 					}}
-					onFocus={() => {
-						search(query);
-						setOpen(true);
-					}}
-				/>
-				{value && (
-					<button
-						className="agent-settings-clear clickable-icon"
-						aria-label="Clear"
-						onClick={() => {
-							setQuery("");
-							setSuggestions([]);
-							onChange(null);
-						}}
-					>
-						×
-					</button>
-				)}
-			</div>
+				>
+					×
+				</button>
+			)}
 			{open && suggestions.length > 0 && (
-				<div className="agent-settings-suggestions">
+				<div className="acs-suggestions">
 					{suggestions.map((f) => (
 						<div
 							key={f.path}
-							className="agent-settings-suggestion-item"
+							className="acs-suggestion"
 							onMouseDown={(e) => {
 								e.preventDefault();
 								setQuery(f.path);
@@ -108,8 +105,10 @@ function FilePicker({
 								onChange(f.path);
 							}}
 						>
-							{f.basename}
-							<span className="agent-settings-suggestion-path">
+							<span className="acs-suggestion-name">
+								{f.basename}
+							</span>
+							<span className="acs-suggestion-path">
 								{f.parent?.path ?? ""}
 							</span>
 						</div>
@@ -120,14 +119,14 @@ function FilePicker({
 	);
 }
 
+// ── Tag list (inline) ────────────────────────────────────────────────────────
+
 function TagList({
-	label,
 	items,
 	placeholder,
 	onAdd,
 	onRemove,
 }: {
-	label: string;
 	items: string[];
 	placeholder: string;
 	onAdd: (item: string) => void;
@@ -144,46 +143,37 @@ function TagList({
 	};
 
 	return (
-		<div className="agent-settings-field">
-			<label className="agent-settings-label">{label}</label>
-			<div className="agent-settings-tag-list">
-				{items.map((item) => (
-					<span key={item} className="agent-settings-tag">
-						{item}
-						<button
-							className="agent-settings-tag-remove"
-							onClick={() => onRemove(item)}
-							aria-label={`Remove ${item}`}
-						>
-							×
-						</button>
-					</span>
-				))}
-			</div>
-			<div className="agent-settings-tag-input-row">
-				<input
-					className="agent-settings-input"
-					type="text"
-					placeholder={placeholder}
-					value={input}
-					onChange={(e) => setInput(e.target.value)}
-					onKeyDown={(e) => {
-						if (e.key === "Enter") {
-							e.preventDefault();
-							commit();
-						}
-					}}
-				/>
-				<button
-					className="agent-settings-add-btn mod-cta"
-					onClick={commit}
-				>
-					Add
-				</button>
-			</div>
+		<div className="acs-tags">
+			{items.map((item) => (
+				<span key={item} className="acs-tag">
+					{item}
+					<button
+						className="acs-tag-x"
+						onClick={() => onRemove(item)}
+						aria-label={`Remove ${item}`}
+					>
+						×
+					</button>
+				</span>
+			))}
+			<input
+				className="acs-tag-input"
+				type="text"
+				placeholder={items.length === 0 ? placeholder : ""}
+				value={input}
+				onChange={(e) => setInput(e.target.value)}
+				onKeyDown={(e) => {
+					if (e.key === "Enter") {
+						e.preventDefault();
+						commit();
+					}
+				}}
+			/>
 		</div>
 	);
 }
+
+// ── Main component ───────────────────────────────────────────────────────────
 
 export function AgentSettings({
 	agent,
@@ -192,8 +182,8 @@ export function AgentSettings({
 }: AgentSettingsProps) {
 	const [name, setName] = useState(agent.name);
 	const [schedule, setSchedule] = useState(agent.schedule ?? "");
+	const [collapsed, setCollapsed] = useState(false);
 
-	// Sync if agent changes externally
 	useEffect(() => {
 		setName(agent.name);
 		setSchedule(agent.schedule ?? "");
@@ -216,79 +206,107 @@ export function AgentSettings({
 	};
 
 	return (
-		<div className="agent-settings-container">
-			<div className="agent-settings-header">
-				<SectionIcon name="settings" />
-				<span>Configuration</span>
+		<div className="acs-panel">
+			{/* Collapse toggle bar */}
+			<div
+				className="acs-toggle"
+				onClick={() => setCollapsed((v) => !v)}
+			>
+				<span
+					className={`acs-chevron${collapsed ? " is-collapsed" : ""}`}
+				>
+					<Icon name="chevron-down" />
+				</span>
+				<Icon name="settings" />
+				<span className="acs-toggle-label">Configuration</span>
 			</div>
 
-			{/* Name */}
-			<div className="agent-settings-field">
-				<label className="agent-settings-label">Name</label>
-				<input
-					className="agent-settings-input"
-					type="text"
-					value={name}
-					onChange={(e) => setName(e.target.value)}
-					onBlur={commitName}
-					onKeyDown={(e) => {
-						if (e.key === "Enter") {
-							(e.target as HTMLInputElement).blur();
-						}
-					}}
-				/>
-			</div>
+			{!collapsed && (
+				<div className="acs-grid">
+					{/* Row 1: Name + Schedule */}
+					<div className="acs-row">
+						<label className="acs-label">Name</label>
+						<input
+							className="acs-input"
+							type="text"
+							value={name}
+							onChange={(e) => setName(e.target.value)}
+							onBlur={commitName}
+							onKeyDown={(e) => {
+								if (e.key === "Enter")
+									(e.target as HTMLInputElement).blur();
+							}}
+						/>
+					</div>
+					<div className="acs-row">
+						<label className="acs-label">Schedule</label>
+						<input
+							className="acs-input"
+							type="text"
+							placeholder="e.g. 09:00 daily"
+							value={schedule}
+							onChange={(e) => setSchedule(e.target.value)}
+							onBlur={commitSchedule}
+							onKeyDown={(e) => {
+								if (e.key === "Enter")
+									(e.target as HTMLInputElement).blur();
+							}}
+						/>
+					</div>
 
-			{/* Instructions */}
-			<FilePicker
-				label="Instructions"
-				value={agent.instructionsPath}
-				plugin={plugin}
-				onChange={(path) => void onUpdate({ instructionsPath: path })}
-			/>
+					{/* Row 2: Instructions */}
+					<div className="acs-row acs-row--wide">
+						<label className="acs-label">Instructions</label>
+						<FilePicker
+							value={agent.instructionsPath}
+							plugin={plugin}
+							onChange={(path) =>
+								void onUpdate({ instructionsPath: path })
+							}
+						/>
+					</div>
 
-			{/* Tools */}
-			<TagList
-				label="Tools"
-				items={agent.tools}
-				placeholder="Tool name…"
-				onAdd={(t) => void onUpdate({ tools: [...agent.tools, t] })}
-				onRemove={(t) =>
-					void onUpdate({ tools: agent.tools.filter((x) => x !== t) })
-				}
-			/>
-
-			{/* MCPs */}
-			<TagList
-				label="MCP Servers"
-				items={agent.mcps}
-				placeholder="MCP server name…"
-				onAdd={(m) => void onUpdate({ mcps: [...agent.mcps, m] })}
-				onRemove={(m) =>
-					void onUpdate({ mcps: agent.mcps.filter((x) => x !== m) })
-				}
-			/>
-
-			{/* Schedule */}
-			<div className="agent-settings-field">
-				<label className="agent-settings-label">Schedule</label>
-				<input
-					className="agent-settings-input"
-					type="text"
-					placeholder="e.g. 09:00 daily, Monday 08:00"
-					value={schedule}
-					onChange={(e) => setSchedule(e.target.value)}
-					onBlur={commitSchedule}
-					onKeyDown={(e) => {
-						if (e.key === "Enter") {
-							(e.target as HTMLInputElement).blur();
-						}
-					}}
-				/>
-				<div className="agent-settings-hint">
-					Leave blank to run on demand
+					{/* Row 3: Tools + MCPs */}
+					<div className="acs-row">
+						<label className="acs-label">Tools</label>
+						<TagList
+							items={agent.tools}
+							placeholder="Add tool…"
+							onAdd={(t) =>
+								void onUpdate({
+									tools: [...agent.tools, t],
+								})
+							}
+							onRemove={(t) =>
+								void onUpdate({
+									tools: agent.tools.filter(
+										(x) => x !== t,
+									),
+								})
+							}
+						/>
+					</div>
+					<div className="acs-row">
+						<label className="acs-label">MCPs</label>
+						<TagList
+							items={agent.mcps}
+							placeholder="Add MCP…"
+							onAdd={(m) =>
+								void onUpdate({
+									mcps: [...agent.mcps, m],
+								})
+							}
+							onRemove={(m) =>
+								void onUpdate({
+									mcps: agent.mcps.filter(
+										(x) => x !== m,
+									),
+								})
+							}
+						/>
+					</div>
 				</div>
-			</div>
+			)}
 		</div>
 	);
 }
