@@ -650,6 +650,27 @@ export class AgentManagerSettingTab extends PluginSettingTab {
 			);
 
 		// ─────────────────────────────────────────────────────────────────────
+		// Agent Manager
+		// ─────────────────────────────────────────────────────────────────────
+
+		new Setting(containerEl).setName("Agent Manager").setHeading();
+
+		new Setting(containerEl)
+			.setName("Process template path")
+			.setDesc(
+				"Vault-relative path to a template file used when creating new process instructions via the + button.",
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder("path/to/template.md")
+					.setValue(this.plugin.settings.processTemplatePath)
+					.onChange(async (value) => {
+						this.plugin.settings.processTemplatePath = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		// ─────────────────────────────────────────────────────────────────────
 		// Developer
 		// ─────────────────────────────────────────────────────────────────────
 

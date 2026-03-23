@@ -1,6 +1,6 @@
 import * as React from "react";
 const { useState, useRef, useEffect, useCallback } = React;
-import { setIcon, TFile } from "obsidian";
+import { setIcon, TFile, Notice } from "obsidian";
 import type AgentManagerPlugin from "../../plugin";
 import type { ManagedAgent } from "../../domain/models/managed-agent";
 
@@ -182,7 +182,7 @@ export function AgentSettings({
 }: AgentSettingsProps) {
 	const [name, setName] = useState(agent.name);
 	const [schedule, setSchedule] = useState(agent.schedule ?? "");
-	const [collapsed, setCollapsed] = useState(false);
+	const [collapsed, setCollapsed] = useState(true);
 
 	useEffect(() => {
 		setName(agent.name);
@@ -257,53 +257,75 @@ export function AgentSettings({
 					{/* Row 2: Instructions */}
 					<div className="acs-row acs-row--wide">
 						<label className="acs-label">Instructions</label>
-						<FilePicker
-							value={agent.instructionsPath}
-							plugin={plugin}
-							onChange={(path) =>
-								void onUpdate({ instructionsPath: path })
-							}
-						/>
-					</div>
-
-					{/* Row 3: Tools + MCPs */}
-					<div className="acs-row">
-						<label className="acs-label">Tools</label>
-						<TagList
-							items={agent.tools}
-							placeholder="Add tool…"
-							onAdd={(t) =>
-								void onUpdate({
-									tools: [...agent.tools, t],
-								})
-							}
-							onRemove={(t) =>
-								void onUpdate({
-									tools: agent.tools.filter(
-										(x) => x !== t,
-									),
-								})
-							}
-						/>
-					</div>
-					<div className="acs-row">
-						<label className="acs-label">MCPs</label>
-						<TagList
-							items={agent.mcps}
-							placeholder="Add MCP…"
-							onAdd={(m) =>
-								void onUpdate({
-									mcps: [...agent.mcps, m],
-								})
-							}
-							onRemove={(m) =>
-								void onUpdate({
-									mcps: agent.mcps.filter(
-										(x) => x !== m,
-									),
-								})
-							}
-						/>
+						<div className="acs-instructions-row">
+							<FilePicker
+								value={agent.instructionsPath}
+								plugin={plugin}
+								onChange={(path) =>
+									void onUpdate({ instructionsPath: path })
+								}
+							/>
+							<button
+								className="clickable-icon acs-create-template-btn"
+								aria-label="Create new process from template"
+								onClick={async () => {
+									const templatePath =
+										plugin.settings.processTemplatePath;
+									if (!templatePath) {
+										new Notice(
+											"Set a process template path in Agent Manager settings first.",
+										);
+										return;
+									}
+									const templateFile =
+										plugin.app.vault.getAbstractFileByPath(
+											templatePath,
+										);
+									if (
+										!templateFile ||
+										!(templateFile instanceof TFile)
+									) {
+										new Notice(
+											`Template not found: ${templatePath}`,
+										);
+										return;
+									}
+									const templateContent =
+										await plugin.app.vault.read(
+											templateFile,
+										);
+									const folder =
+										templateFile.parent?.path ?? "";
+									const baseName = `${agent.name} Instructions`;
+									let fileName = `${baseName}.md`;
+									let counter = 1;
+									while (
+										plugin.app.vault.getAbstractFileByPath(
+											folder
+												? `${folder}/${fileName}`
+												: fileName,
+										)
+									) {
+										counter++;
+										fileName = `${baseName} ${counter}.md`;
+									}
+									const newPath = folder
+										? `${folder}/${fileName}`
+										: fileName;
+									await plugin.app.vault.create(
+										newPath,
+										templateContent,
+									);
+									await onUpdate({
+										instructionsPath: newPath,
+									});
+									new Notice(`Created: ${newPath}`);
+								}}
+								ref={(el) => {
+									if (el) setIcon(el, "plus");
+								}}
+							/>
+						</div>
 					</div>
 				</div>
 			)}

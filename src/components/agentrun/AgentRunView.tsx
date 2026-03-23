@@ -52,6 +52,44 @@ function AgentRunComponent({
 		[agentId, plugin],
 	);
 
+	// Fade out "complete" dot after 2s — triggered on focus or when status becomes complete while focused
+	const fadeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const scheduleFadeOut = React.useCallback(() => {
+		if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+		fadeTimerRef.current = setTimeout(() => {
+			void handleUpdate({ status: "idle" });
+			fadeTimerRef.current = null;
+		}, 2000);
+	}, [handleUpdate]);
+
+	// When this view gains focus, fade out the complete dot
+	React.useEffect(() => {
+		const handler = () => {
+			const activeLeaf = plugin.app.workspace.activeLeaf;
+			if (activeLeaf?.view === view) {
+				const current = plugin.settings.managedAgents.find(
+					(a) => a.id === agentId,
+				);
+				if (current?.status === "complete") {
+					scheduleFadeOut();
+				}
+			}
+		};
+		plugin.app.workspace.on("active-leaf-change", handler);
+		return () => {
+			plugin.app.workspace.off("active-leaf-change", handler);
+			if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+		};
+	}, [agentId, plugin, view, scheduleFadeOut]);
+
+	// When status becomes "complete" while already focused, start fade
+	React.useEffect(() => {
+		if (agent?.status === "complete" && plugin.app.workspace.activeLeaf?.view === view) {
+			scheduleFadeOut();
+		}
+	}, [agent?.status, plugin, view, scheduleFadeOut]);
+
 	if (!agent) {
 		return <div className="agent-run-empty">Agent not found.</div>;
 	}
@@ -71,6 +109,7 @@ function AgentRunComponent({
 					instructionsPath={agent.instructionsPath}
 					agentName={agent.name}
 					managedAgentId={agentId}
+					onUpdate={handleUpdate}
 				/>
 			</div>
 		</div>

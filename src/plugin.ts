@@ -110,6 +110,8 @@ export interface AgentManagerPluginSettings {
 	lastUsedModes: Record<string, string>;
 	/** Managed autonomous agents */
 	managedAgents: ManagedAgent[];
+	/** Vault-relative path to process template file for creating new instructions */
+	processTemplatePath: string;
 	// Floating chat settings
 	enableFloatingChat: boolean;
 	floatingButtonImage: string;
@@ -176,6 +178,7 @@ const DEFAULT_SETTINGS: AgentManagerPluginSettings = {
 	lastUsedModels: {},
 	lastUsedModes: {},
 	managedAgents: [],
+	processTemplatePath: "",
 	enableFloatingChat: false,
 	floatingButtonImage: "",
 	floatingWindowSize: { width: 400, height: 500 },
@@ -1249,6 +1252,10 @@ export default class AgentManagerPlugin extends Plugin {
 			managedAgents: Array.isArray(rawSettings.managedAgents)
 				? (rawSettings.managedAgents as ManagedAgent[])
 				: [],
+			processTemplatePath:
+				typeof rawSettings.processTemplatePath === "string"
+					? rawSettings.processTemplatePath
+					: DEFAULT_SETTINGS.processTemplatePath,
 		};
 
 		this.ensureDefaultAgentId();

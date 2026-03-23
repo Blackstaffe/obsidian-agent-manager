@@ -1,4 +1,4 @@
-export type ManagedAgentStatus = "idle" | "running" | "scheduled";
+export type ManagedAgentStatus = "idle" | "running" | "complete" | "scheduled";
 
 export interface ManagedAgent {
 	id: string;
@@ -13,6 +13,12 @@ export interface ManagedAgent {
 	schedule: string | null;
 	status: ManagedAgentStatus;
 	createdAt: number;
+	/** Truncated preview of the last assistant message */
+	lastMessagePreview?: string;
+	/** Timestamp (ms) of the last activity */
+	lastActiveAt?: number;
+	/** Duration (ms) of the last run */
+	lastRunDuration?: number;
 }
 
 export function createManagedAgent(name = "New Agent"): ManagedAgent {

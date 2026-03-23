@@ -1,6 +1,6 @@
 import { ItemView, WorkspaceLeaf, setIcon, Menu } from "obsidian";
 import * as React from "react";
-const { useState, useRef, useEffect } = React;
+const { useState, useRef, useEffect, useCallback } = React;
 import { createRoot, Root } from "react-dom/client";
 import type AgentManagerPlugin from "../../plugin";
 import type { ManagedAgent } from "../../domain/models/managed-agent";
@@ -45,13 +45,43 @@ function NavButton({
 	);
 }
 
-// ── Agent row ────────────────────────────────────────────────────────────────
+// ── Status indicator ─────────────────────────────────────────────────────────
 
-const STATUS_COLOURS: Record<ManagedAgent["status"], string> = {
-	idle: "var(--text-muted)",
-	running: "var(--color-green)",
-	scheduled: "var(--color-blue)",
-};
+function StatusDot({ status }: { status: ManagedAgent["status"] }) {
+	if (status === "idle") return null;
+	const className =
+		status === "running"
+			? "agent-panel-status-dot is-running"
+			: "agent-panel-status-dot is-complete";
+	return <span className={className} />;
+}
+
+// ── Time formatting ──────────────────────────────────────────────────────────
+
+function formatTimeAgo(ts: number): string {
+	const diff = Date.now() - ts;
+	const seconds = Math.floor(diff / 1000);
+	if (seconds < 60) return "just now";
+	const minutes = Math.floor(seconds / 60);
+	if (minutes < 60) return `${minutes}m ago`;
+	const hours = Math.floor(minutes / 60);
+	if (hours < 24) return `${hours}h ago`;
+	const days = Math.floor(hours / 24);
+	return `${days}d ago`;
+}
+
+function formatDuration(ms: number): string {
+	const seconds = Math.floor(ms / 1000);
+	if (seconds < 60) return `${seconds}s`;
+	const minutes = Math.floor(seconds / 60);
+	const remainSec = seconds % 60;
+	if (minutes < 60) return `${minutes}m ${remainSec}s`;
+	const hours = Math.floor(minutes / 60);
+	const remainMin = minutes % 60;
+	return `${hours}h ${remainMin}m`;
+}
+
+// ── Agent row ────────────────────────────────────────────────────────────────
 
 function AgentRow({
 	agent,
@@ -63,6 +93,14 @@ function AgentRow({
 	onDelete: (agent: ManagedAgent) => void;
 }) {
 	const [expanded, setExpanded] = useState(false);
+
+	const handleChevronClick = useCallback(
+		(e: React.MouseEvent) => {
+			e.stopPropagation();
+			setExpanded((v) => !v);
+		},
+		[],
+	);
 
 	const handleContextMenu = (e: React.MouseEvent) => {
 		e.preventDefault();
@@ -82,37 +120,52 @@ function AgentRow({
 		menu.showAtMouseEvent(e.nativeEvent);
 	};
 
+	const hasQuickview = agent.lastMessagePreview || agent.lastActiveAt;
+
 	return (
-		<div className="agent-panel-item">
+		<div className="tree-item agent-panel-item">
 			<div
 				className="agent-panel-item-title"
-				onClick={() => setExpanded((v) => !v)}
-				onDoubleClick={() => onOpen(agent)}
 				onContextMenu={handleContextMenu}
 			>
-				<span className="agent-panel-collapse-icon">
+				<div
+					className={`agent-panel-collapse-icon${expanded ? " is-expanded" : ""}`}
+					onClick={handleChevronClick}
+				>
 					<IconEl
 						name={expanded ? "chevron-down" : "chevron-right"}
 					/>
-				</span>
-				<span className="agent-panel-item-name">{agent.name}</span>
+				</div>
 				<span
-					className="agent-panel-item-status"
-					style={{ color: STATUS_COLOURS[agent.status] }}
+					className="agent-panel-item-name"
+					onClick={() => onOpen(agent)}
 				>
-					{agent.status}
+					{agent.name}
 				</span>
+				<StatusDot status={agent.status} />
 			</div>
 			{expanded && (
 				<div className="agent-panel-item-detail">
-					{agent.instructionsPath
-						? `Instructions: ${agent.instructionsPath}`
-						: "No instructions set"}
-					{agent.schedule && (
-						<span className="agent-panel-item-schedule">
-							{" · "}
-							{agent.schedule}
-						</span>
+					{hasQuickview ? (
+						<div className="agent-panel-quickview">
+							{agent.lastMessagePreview && (
+								<div className="agent-panel-quickview-message">
+									{agent.lastMessagePreview}
+								</div>
+							)}
+							<div className="agent-panel-quickview-meta">
+								{agent.lastActiveAt && (
+									<span>{formatTimeAgo(agent.lastActiveAt)}</span>
+								)}
+								{agent.lastRunDuration != null && (
+									<span>{formatDuration(agent.lastRunDuration)}</span>
+								)}
+							</div>
+						</div>
+					) : (
+						<div className="agent-panel-quickview-empty">
+							No recent activity
+						</div>
 					)}
 				</div>
 			)}
@@ -136,6 +189,8 @@ function AgentPanel({
 	const [agents, setAgents] = useState<ManagedAgent[]>(
 		plugin.settings.managedAgents ?? [],
 	);
+	const [searchQuery, setSearchQuery] = useState("");
+	const [showSearch, setShowSearch] = useState(false);
 
 	// Subscribe to agents-changed events from any source
 	useEffect(() => {
@@ -158,13 +213,31 @@ function AgentPanel({
 		};
 	}, [plugin]);
 
-	const onDemand = agents.filter((a) => !a.schedule);
-	const scheduled = agents.filter((a) => a.schedule);
+	const filtered = searchQuery
+		? agents.filter((a) =>
+				a.name.toLowerCase().includes(searchQuery.toLowerCase()),
+			)
+		: agents;
+
+	const onDemand = filtered.filter((a) => !a.schedule);
+	const scheduled = filtered.filter((a) => a.schedule);
+
+	const toggleSearch = useCallback(() => {
+		setShowSearch((v) => {
+			if (v) setSearchQuery("");
+			return !v;
+		});
+	}, []);
 
 	return (
 		<div className="agent-panel-container">
 			<div className="nav-header">
 				<div className="nav-buttons-container">
+					<NavButton
+						icon="search"
+						label="Search agents"
+						onClick={toggleSearch}
+					/>
 					<NavButton
 						icon="plus"
 						label="New agent"
@@ -172,16 +245,31 @@ function AgentPanel({
 					/>
 				</div>
 			</div>
+			{showSearch && (
+				<div className="agent-panel-search">
+					<input
+						type="text"
+						className="agent-panel-search-input"
+						placeholder="Filter agents…"
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						autoFocus
+					/>
+				</div>
+			)}
 			<div className="agent-panel-list">
 				{onDemand.length === 0 && scheduled.length === 0 && (
 					<div className="agent-panel-empty">
-						No agents yet. Press + to create one.
+						{searchQuery
+							? "No matching agents."
+							: "No agents yet. Press + to create one."}
 					</div>
 				)}
 				{onDemand.map((agent) => (
 					<AgentRow
 						key={agent.id}
 						agent={agent}
+
 						onOpen={onOpenAgent}
 						onDelete={onDeleteAgent}
 					/>
@@ -236,7 +324,16 @@ export class AgentPanelView extends ItemView {
 	}
 
 	private async openAgentRunView(agent: ManagedAgent) {
-		const leaf = this.app.workspace.getLeaf("tab");
+		// Try to find an existing AgentRunView leaf showing this agent
+		const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE_AGENT_RUN)
+			.find((l) => (l.view.getState() as { agentId?: string }).agentId === agent.id);
+		if (existing) {
+			this.app.workspace.revealLeaf(existing);
+			return;
+		}
+
+		// Reuse the most recently focused leaf (matches Obsidian note-opening behavior)
+		const leaf = this.app.workspace.getLeaf(false);
 		await leaf.setViewState({
 			type: VIEW_TYPE_AGENT_RUN,
 			active: true,
