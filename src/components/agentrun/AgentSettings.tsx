@@ -3,6 +3,7 @@ const { useState, useRef, useEffect, useCallback } = React;
 import { setIcon, TFile, Notice } from "obsidian";
 import type AgentManagerPlugin from "../../plugin";
 import type { ManagedAgent } from "../../domain/models/managed-agent";
+import { AGENT_CATEGORIES } from "../../domain/models/managed-agent";
 
 interface AgentSettingsProps {
 	agent: ManagedAgent;
@@ -237,6 +238,24 @@ export function AgentSettings({
 									(e.target as HTMLInputElement).blur();
 							}}
 						/>
+					</div>
+					<div className="acs-row">
+						<label className="acs-label">Category</label>
+						<select
+							className="acs-input dropdown"
+							value={agent.category ?? ""}
+							onChange={(e) => {
+								const val = e.target.value || null;
+								void onUpdate({ category: val as ManagedAgent["category"] });
+							}}
+						>
+							<option value="">Uncategorized</option>
+							{AGENT_CATEGORIES.map((cat) => (
+								<option key={cat} value={cat}>
+									{cat}
+								</option>
+							))}
+						</select>
 					</div>
 					<div className="acs-row">
 						<label className="acs-label">Schedule</label>

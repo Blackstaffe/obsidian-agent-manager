@@ -1,8 +1,22 @@
 export type ManagedAgentStatus = "idle" | "running" | "complete" | "scheduled";
 
+export const AGENT_CATEGORIES = [
+	"Administration",
+	"Business Development",
+	"Finance",
+	"Legal",
+	"Marketing",
+	"Research",
+	"Sales",
+] as const;
+
+export type AgentCategory = (typeof AGENT_CATEGORIES)[number] | null;
+
 export interface ManagedAgent {
 	id: string;
 	name: string;
+	/** Category for grouping in the explorer */
+	category: AgentCategory;
 	/** Vault-relative path to a markdown file used as system instructions */
 	instructionsPath: string | null;
 	/** Tool names enabled for this agent */
@@ -21,10 +35,11 @@ export interface ManagedAgent {
 	lastRunDuration?: number;
 }
 
-export function createManagedAgent(name = "New Agent"): ManagedAgent {
+export function createManagedAgent(name = "New Agent", category: AgentCategory = null): ManagedAgent {
 	return {
 		id: crypto.randomUUID(),
 		name,
+		category,
 		instructionsPath: null,
 		tools: [],
 		mcps: [],

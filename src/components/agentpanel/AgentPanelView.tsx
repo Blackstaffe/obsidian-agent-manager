@@ -142,6 +142,11 @@ function AgentRow({
 				>
 					{agent.name}
 				</span>
+				{agent.schedule && (
+					<span className="agent-panel-schedule-icon" title={agent.schedule}>
+						<IconEl name="clock" />
+					</span>
+				)}
 				<StatusDot status={agent.status} />
 			</div>
 			{expanded && (
@@ -169,6 +174,36 @@ function AgentRow({
 					)}
 				</div>
 			)}
+		</div>
+	);
+}
+
+// ── Category group ────────────────────────────────────────────────────────────
+
+function CategoryGroup({
+	category,
+	agents,
+	onOpen,
+	onDelete,
+}: {
+	category: string;
+	agents: ManagedAgent[];
+	onOpen: (agent: ManagedAgent) => void;
+	onDelete: (agent: ManagedAgent) => void;
+}) {
+	return (
+		<div className="agent-panel-category">
+			<div className="agent-panel-category-header">
+				{category}
+			</div>
+			{agents.map((agent) => (
+				<AgentRow
+					key={agent.id}
+					agent={agent}
+					onOpen={onOpen}
+					onDelete={onDelete}
+				/>
+			))}
 		</div>
 	);
 }
@@ -214,13 +249,31 @@ function AgentPanel({
 	}, [plugin]);
 
 	const filtered = searchQuery
-		? agents.filter((a) =>
-				a.name.toLowerCase().includes(searchQuery.toLowerCase()),
-			)
+		? agents.filter((a) => {
+				const q = searchQuery.toLowerCase();
+				return (
+					a.name.toLowerCase().includes(q) ||
+					(a.category?.toLowerCase().includes(q) ?? false)
+				);
+			})
 		: agents;
 
-	const onDemand = filtered.filter((a) => !a.schedule);
-	const scheduled = filtered.filter((a) => a.schedule);
+	// Group agents by category
+	const grouped = React.useMemo(() => {
+		const map = new Map<string, ManagedAgent[]>();
+		for (const agent of filtered) {
+			const key = agent.category ?? "Uncategorized";
+			if (!map.has(key)) map.set(key, []);
+			map.get(key)!.push(agent);
+		}
+		// Sort category groups: named categories alphabetically, Uncategorized last
+		const sorted = [...map.entries()].sort(([a], [b]) => {
+			if (a === "Uncategorized") return 1;
+			if (b === "Uncategorized") return -1;
+			return a.localeCompare(b);
+		});
+		return sorted;
+	}, [filtered]);
 
 	const toggleSearch = useCallback(() => {
 		setShowSearch((v) => {
@@ -258,37 +311,22 @@ function AgentPanel({
 				</div>
 			)}
 			<div className="agent-panel-list">
-				{onDemand.length === 0 && scheduled.length === 0 && (
+				{grouped.length === 0 && (
 					<div className="agent-panel-empty">
 						{searchQuery
 							? "No matching agents."
 							: "No agents yet. Press + to create one."}
 					</div>
 				)}
-				{onDemand.map((agent) => (
-					<AgentRow
-						key={agent.id}
-						agent={agent}
-
+				{grouped.map(([category, categoryAgents]) => (
+					<CategoryGroup
+						key={category}
+						category={category}
+						agents={categoryAgents}
 						onOpen={onOpenAgent}
 						onDelete={onDeleteAgent}
 					/>
 				))}
-				{scheduled.length > 0 && (
-					<>
-						<div className="agent-panel-section-header">
-							Scheduled
-						</div>
-						{scheduled.map((agent) => (
-							<AgentRow
-								key={agent.id}
-								agent={agent}
-								onOpen={onOpenAgent}
-								onDelete={onDeleteAgent}
-							/>
-						))}
-					</>
-				)}
 			</div>
 		</div>
 	);

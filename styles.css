@@ -2366,6 +2366,16 @@ If your plugin does not need CSS, delete this file.
 	margin-top: 8px;
 }
 
+.agent-panel-category-header {
+	padding: 4px 12px 2px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--text-muted);
+	margin-top: 8px;
+}
+
 /* Use Obsidian tree-item classes for native sizing */
 .agent-panel-item {
 	cursor: pointer;
@@ -2413,6 +2423,20 @@ If your plugin does not need CSS, delete this file.
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	cursor: pointer;
+}
+
+/* ── Schedule icon ──────────────────────────────────────────── */
+.agent-panel-schedule-icon {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	color: var(--text-faint);
+	margin-left: 2px;
+}
+
+.agent-panel-schedule-icon svg {
+	width: 12px;
+	height: 12px;
 }
 
 /* ── Status dots ────────────────────────────────────────────── */
