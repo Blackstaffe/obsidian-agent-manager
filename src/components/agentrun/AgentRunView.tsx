@@ -12,14 +12,12 @@ export const VIEW_TYPE_AGENT_RUN = "agent-manager-run";
 interface AgentRunComponentProps {
 	plugin: AgentManagerPlugin;
 	agentId: string;
-	viewId: string;
 	view: AgentRunView;
 }
 
 function AgentRunComponent({
 	plugin,
 	agentId,
-	viewId,
 	view,
 }: AgentRunComponentProps) {
 	const [agent, setAgent] = React.useState<ManagedAgent | null>(null);
@@ -57,10 +55,12 @@ function AgentRunComponent({
 
 	const scheduleFadeOut = React.useCallback(() => {
 		if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+		// Transition: complete → fading (CSS fade animation) → idle (dot removed)
+		void handleUpdate({ status: "fading" });
 		fadeTimerRef.current = setTimeout(() => {
 			void handleUpdate({ status: "idle" });
 			fadeTimerRef.current = null;
-		}, 2000);
+		}, 1500); // matches CSS agent-fade-out duration
 	}, [handleUpdate]);
 
 	// When this view gains focus, fade out the complete dot
@@ -104,12 +104,10 @@ function AgentRunComponent({
 			<div className="agent-run-chat-pane">
 				<AgentRunChat
 					plugin={plugin}
-					viewId={viewId}
 					view={view}
 					instructionsPath={agent.instructionsPath}
 					agentName={agent.name}
 					managedAgentId={agentId}
-					onUpdate={handleUpdate}
 				/>
 			</div>
 		</div>
@@ -164,8 +162,7 @@ export class AgentRunView extends ItemView {
 	}
 
 	async onClose() {
-		// Clean up ACP adapter for this view
-		await this.plugin.removeAdapter(this.viewId);
+		// Process keeps running — AgentProcessManager owns the lifecycle
 		this.root?.unmount();
 		this.root = null;
 	}
@@ -176,7 +173,6 @@ export class AgentRunView extends ItemView {
 			<AgentRunComponent
 				plugin={this.plugin}
 				agentId={this.agentId}
-				viewId={this.viewId}
 				view={this}
 			/>,
 		);

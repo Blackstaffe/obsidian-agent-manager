@@ -1,4 +1,4 @@
-export type ManagedAgentStatus = "idle" | "running" | "complete" | "scheduled";
+export type ManagedAgentStatus = "idle" | "running" | "complete" | "fading" | "scheduled";
 
 export const AGENT_CATEGORIES = [
 	"Administration",

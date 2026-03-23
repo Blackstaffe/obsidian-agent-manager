@@ -5,6 +5,7 @@
 - [ ] Fix alignment of explorer to match file explorer
 - [ ] Fix chevron sizes to match file explorer
 - [ ] Make quickview text clickable to open agent
+- [ ] Investigate option to suppress tool use and thinking output from chat view (user-facing toggle)
 
 ---
 

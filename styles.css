@@ -2456,18 +2456,21 @@ If your plugin does not need CSS, delete this file.
 
 .agent-panel-status-dot.is-complete {
 	background-color: var(--interactive-accent);
-	animation: agent-fade-out 2s ease-out forwards;
 }
 
-@keyframes agent-fade-out {
-	0% { opacity: 1; }
-	70% { opacity: 1; }
-	100% { opacity: 0; }
+.agent-panel-status-dot.is-fading {
+	background-color: var(--interactive-accent);
+	animation: agent-fade-out 1.5s ease-out forwards;
 }
 
 @keyframes agent-pulse {
 	0%, 100% { opacity: 1; }
 	50% { opacity: 0.3; }
+}
+
+@keyframes agent-fade-out {
+	0% { opacity: 1; }
+	100% { opacity: 0; }
 }
 
 /* ── Quickview dropdown ─────────────────────────────────────── */

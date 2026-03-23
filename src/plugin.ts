@@ -40,6 +40,7 @@ import {
 } from "./domain/models/agent-config";
 import type { SavedSessionInfo } from "./domain/models/session-info";
 import { initializeLogger } from "./shared/logger";
+import { AgentProcessManager } from "./shared/agent-process-manager";
 
 // Re-export for backward compatibility
 export type { AgentEnvVar, CustomAgentSettings };
@@ -193,6 +194,9 @@ export default class AgentManagerPlugin extends Plugin {
 	/** Registry for all chat view containers (sidebar + floating) */
 	viewRegistry = new ChatViewRegistry();
 
+	/** Plugin-level process manager for managed agent background processes */
+	agentProcessManager!: AgentProcessManager;
+
 	/** Map of viewId to AcpAdapter for multi-session support */
 	private _adapters: Map<string, AcpAdapter> = new Map();
 	/** Floating button container (independent from chat view instances) */
@@ -214,6 +218,9 @@ export default class AgentManagerPlugin extends Plugin {
 
 		// Initialize settings store
 		this.settingsStore = createSettingsStore(this.settings, this);
+
+		// Initialize process manager for managed agent background processes
+		this.agentProcessManager = new AgentProcessManager(this);
 
 		this.registerView(VIEW_TYPE_CHAT, (leaf) => new ChatView(leaf, this));
 		this.registerView(VIEW_TYPE_AGENT_PANEL, (leaf) => new AgentPanelView(leaf, this));
@@ -351,6 +358,8 @@ export default class AgentManagerPlugin extends Plugin {
 		// Note: We don't wait for disconnect to complete to avoid blocking quit
 		this.registerEvent(
 			this.app.workspace.on("quit", () => {
+				// Stop all managed agent background processes
+				void this.agentProcessManager.stopAll();
 				// Fire and forget - don't block Obsidian from quitting
 				for (const [viewId, adapter] of this._adapters) {
 					adapter.disconnect().catch((error) => {
@@ -366,6 +375,9 @@ export default class AgentManagerPlugin extends Plugin {
 	}
 
 	onunload() {
+		// Stop all managed agent background processes
+		void this.agentProcessManager.stopAll();
+
 		// Unmount floating button
 		this.floatingButton?.unmount();
 		this.floatingButton = null;

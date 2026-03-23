@@ -49,11 +49,10 @@ function NavButton({
 
 function StatusDot({ status }: { status: ManagedAgent["status"] }) {
 	if (status === "idle") return null;
-	const className =
-		status === "running"
-			? "agent-panel-status-dot is-running"
-			: "agent-panel-status-dot is-complete";
-	return <span className={className} />;
+	let modifier = "is-complete";
+	if (status === "running") modifier = "is-running";
+	else if (status === "fading") modifier = "is-fading";
+	return <span className={`agent-panel-status-dot ${modifier}`} />;
 }
 
 // ── Time formatting ──────────────────────────────────────────────────────────

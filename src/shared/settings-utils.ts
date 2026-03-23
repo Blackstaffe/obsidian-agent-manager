@@ -1,5 +1,14 @@
-import type { AgentEnvVar, CustomAgentSettings } from "../plugin";
-import type { BaseAgentSettings } from "../domain/models/agent-config";
+import type {
+	AgentEnvVar,
+	CustomAgentSettings,
+	AgentManagerPluginSettings,
+} from "../plugin";
+import type {
+	BaseAgentSettings,
+	ClaudeAgentSettings,
+	GeminiAgentSettings,
+	CodexAgentSettings,
+} from "../domain/models/agent-config";
 import type { AgentConfig } from "../domain/ports/agent-manager.port";
 
 export const sanitizeArgs = (value: unknown): string[] => {
@@ -110,6 +119,63 @@ export const ensureUniqueCustomAgentIds = (
 		return { ...agent, id: candidate };
 	});
 };
+
+/**
+ * Find agent settings by ID from plugin settings.
+ * Returns null if the agent ID is not found.
+ */
+export function findAgentSettings(
+	settings: AgentManagerPluginSettings,
+	agentId: string,
+): BaseAgentSettings | null {
+	if (agentId === settings.claude.id) return settings.claude;
+	if (agentId === settings.codex.id) return settings.codex;
+	if (agentId === settings.gemini.id) return settings.gemini;
+	return settings.customAgents.find((a) => a.id === agentId) ?? null;
+}
+
+/**
+ * Build AgentConfig with API key injection for known built-in agents.
+ * Custom agents pass through as-is (no key injection).
+ */
+export function buildAgentConfigWithApiKey(
+	settings: AgentManagerPluginSettings,
+	agentSettings: BaseAgentSettings,
+	agentId: string,
+	workingDirectory: string,
+): AgentConfig {
+	const baseConfig = toAgentConfig(agentSettings, workingDirectory);
+
+	if (agentId === settings.claude.id) {
+		return {
+			...baseConfig,
+			env: {
+				...baseConfig.env,
+				ANTHROPIC_API_KEY: (agentSettings as ClaudeAgentSettings).apiKey,
+			},
+		};
+	}
+	if (agentId === settings.codex.id) {
+		return {
+			...baseConfig,
+			env: {
+				...baseConfig.env,
+				OPENAI_API_KEY: (agentSettings as CodexAgentSettings).apiKey,
+			},
+		};
+	}
+	if (agentId === settings.gemini.id) {
+		return {
+			...baseConfig,
+			env: {
+				...baseConfig.env,
+				GEMINI_API_KEY: (agentSettings as GeminiAgentSettings).apiKey,
+			},
+		};
+	}
+
+	return baseConfig;
+}
 
 /**
  * Convert BaseAgentSettings to AgentConfig for process execution.

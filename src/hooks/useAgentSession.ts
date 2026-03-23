@@ -13,13 +13,10 @@ import { flattenConfigSelectOptions } from "../shared/config-option-utils";
 import type { IAgentManager } from "../domain/ports/agent-manager.port";
 import type { ISettingsAccess } from "../domain/ports/settings-access.port";
 import type { AgentManagerPluginSettings } from "../plugin";
-import type {
-	BaseAgentSettings,
-	ClaudeAgentSettings,
-	GeminiAgentSettings,
-	CodexAgentSettings,
-} from "../domain/models/agent-config";
-import { toAgentConfig } from "../shared/settings-utils";
+import {
+	findAgentSettings,
+	buildAgentConfigWithApiKey,
+} from "../shared/settings-utils";
 
 // ============================================================================
 // Types
@@ -231,76 +228,6 @@ function getCurrentAgent(
 // ============================================================================
 // Helper Functions (Inlined from ManageSessionUseCase)
 // ============================================================================
-
-/**
- * Find agent settings by ID from plugin settings.
- */
-function findAgentSettings(
-	settings: AgentManagerPluginSettings,
-	agentId: string,
-): BaseAgentSettings | null {
-	if (agentId === settings.claude.id) {
-		return settings.claude;
-	}
-	if (agentId === settings.codex.id) {
-		return settings.codex;
-	}
-	if (agentId === settings.gemini.id) {
-		return settings.gemini;
-	}
-	// Search in custom agents
-	const customAgent = settings.customAgents.find(
-		(agent) => agent.id === agentId,
-	);
-	return customAgent || null;
-}
-
-/**
- * Build AgentConfig with API key injection for known agents.
- */
-function buildAgentConfigWithApiKey(
-	settings: AgentManagerPluginSettings,
-	agentSettings: BaseAgentSettings,
-	agentId: string,
-	workingDirectory: string,
-) {
-	const baseConfig = toAgentConfig(agentSettings, workingDirectory);
-
-	// Add API keys to environment for Claude, Codex, and Gemini
-	if (agentId === settings.claude.id) {
-		const claudeSettings = agentSettings as ClaudeAgentSettings;
-		return {
-			...baseConfig,
-			env: {
-				...baseConfig.env,
-				ANTHROPIC_API_KEY: claudeSettings.apiKey,
-			},
-		};
-	}
-	if (agentId === settings.codex.id) {
-		const codexSettings = agentSettings as CodexAgentSettings;
-		return {
-			...baseConfig,
-			env: {
-				...baseConfig.env,
-				OPENAI_API_KEY: codexSettings.apiKey,
-			},
-		};
-	}
-	if (agentId === settings.gemini.id) {
-		const geminiSettings = agentSettings as GeminiAgentSettings;
-		return {
-			...baseConfig,
-			env: {
-				...baseConfig.env,
-				GEMINI_API_KEY: geminiSettings.apiKey,
-			},
-		};
-	}
-
-	// Custom agents - no API key injection
-	return baseConfig;
-}
 
 // ============================================================================
 // Initial State
