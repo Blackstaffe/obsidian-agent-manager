@@ -8,7 +8,53 @@
 
 ---
 
-## Phase 1A: Heartbeat / Scheduler
+## Phase 0: Background Agent Processes ⚠️ ARCHITECTURE BLOCKER
+
+Decouple agent processes from UI tabs so agents can run headlessly. **This is the foundation for all later phases** — heartbeat/scheduler, agent-to-agent, and remote triggering all require spawning and managing agents without a UI tab.
+
+**Blocks**: Phase 1A (Scheduler), Phase 2 (Agent-to-Agent), Phase 3 (Remote Triggering)
+
+### Architecture
+Currently: `AgentRunView.onClose()` → kills AcpAdapter → kills child process. The fix is to move process ownership from the UI tab to a plugin-level **AgentProcessManager** service.
+
+```
+Plugin
+  └── agentProcessManager: AgentProcessManager
+        └── Map<managedAgentId, AgentProcess>
+              ├── adapter: AcpAdapter (owns the child process)
+              ├── messages: ChatMessage[] (buffered while UI detached)
+              ├── sessionState: { sessionId, modes, models, ... }
+              ├── isSending: boolean
+              ├── listeners: Set<callback> (UI subscribers)
+              └── status: ManagedAgentStatus
+```
+
+- UI tab mounts → subscribes to process, hydrates from buffered messages
+- UI tab closes → unsubscribes, process keeps running
+- Explorer panel reads status directly from process manager (dots work without UI)
+
+### Implementation Steps
+
+- [ ] Create `src/shared/message-mutations.ts` — extract message mutation logic from useChat into pure functions (`applySessionUpdate(messages, update) → messages`)
+- [ ] Create `src/domain/models/agent-process.ts` — `AgentProcessState` interface (adapter, messages, session, isSending, status, listeners)
+- [ ] Create `src/shared/agent-process-manager.ts` — core service: `startProcess()`, `stopProcess()`, `getProcess()`, `subscribe()`, `sendMessage()`, `cancelOperation()`, `stopAll()`
+- [ ] Wire into `plugin.ts` — instantiate in `onload()`, call `stopAll()` in `onunload()`/quit, expose as public property
+- [ ] Create `src/hooks/useAgentProcess.ts` — React hook that subscribes to AgentProcessManager, returns same shape as `UseChatControllerReturn`
+- [ ] Update `AgentRunView.tsx` — remove process kill from `onClose()`, just unmount React root
+- [ ] Update `AgentRunChat.tsx` — use `useAgentProcess` instead of `useChatController`
+- [ ] Move session-save logic to process manager (save on turn end regardless of UI state)
+- [ ] Handle permissions while UI detached — queue pending requests, drain on reconnect
+- [ ] Move status dot updates to process manager (update `managedAgents` settings directly)
+
+### Considerations
+- **Permission queue**: If agent requests permission while tab is closed, buffer it and show when tab reopens (or auto-approve per settings)
+- **Auto-export**: Should trigger on process stop, not tab close
+- **Multiple tabs**: Multiple tabs can subscribe to same process; only one handles permissions
+- **Memory**: Consider message limit for very long-running agents
+
+---
+
+## Phase 1A: Heartbeat / Scheduler (depends on Phase 0)
 
 Agents wake up on a schedule, run headlessly, show status in explorer. Click to load session.
 
@@ -35,7 +81,7 @@ Persistent memory via vault markdown files, injected alongside instructions.
 - [ ] UI: memory file picker in AgentSettings
 - [ ] Auto-create memory file on first run
 
-## Phase 2: Agent-to-Agent Communication
+## Phase 2: Agent-to-Agent Communication (depends on Phase 0)
 
 Internal dispatch API — agents trigger other agents and receive results.
 
@@ -45,7 +91,7 @@ Internal dispatch API — agents trigger other agents and receive results.
 - [ ] Permission config UI (allowed agent pairs, rate limiting)
 - [ ] Request/result storage in plugin data directory
 
-## Phase 3: Remote Triggering & Monitoring
+## Phase 3: Remote Triggering & Monitoring (depends on Phase 0)
 
 Android app for triggering agents and viewing status.
 
