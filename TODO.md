@@ -69,10 +69,18 @@ Agents wake up on a schedule, run headlessly, show status in explorer. Click to 
 - [ ] UI: last/next run time in AgentPanelView
 - [ ] UI: global heartbeat settings in plugin settings tab
 
-## Phase 1B: Agent Memory
+## Phase 1B: Agent Memory ⚠️ DESIGN TBD
 
-Persistent memory via vault markdown files, injected alongside instructions.
+Persistent memory for agents across sessions. **Approach not finalized — may change.**
 
+### Current thinking: Plugin-managed (model-agnostic)
+Plugin reads `memory.md` and injects it via auto-mention alongside instructions. At session end, plugin extracts updates and writes back. Any ACP agent gets the same memory because the plugin controls injection.
+
+### Alternative considered: CLAUDE.md + per-process working directory
+Set each agent's `cwd` to a process folder containing a `CLAUDE.md` that tells Claude to read/write `memory.md`. Simpler but Claude Code-specific — Gemini CLI and custom agents wouldn't pick up the CLAUDE.md.
+
+### Tasks (pending design decision)
+- [ ] Decide: plugin-managed injection vs agent-native CLAUDE.md vs hybrid
 - [ ] Add `memoryPath` to ManagedAgent model
 - [ ] Add `agentMemoryConfig` to plugin settings (defaultFolder, autoCreate, template)
 - [ ] Create `memory-manager.ts` (ensureMemoryFile, getMemoryPath, createMemoryTemplate)
@@ -80,6 +88,7 @@ Persistent memory via vault markdown files, injected alongside instructions.
 - [ ] Support multiple auto-mention resources in message-service.ts
 - [ ] UI: memory file picker in AgentSettings
 - [ ] Auto-create memory file on first run
+- [ ] Optional: per-agent `workingDirectory` setting (enables CLAUDE.md discovery for Claude Code agents)
 
 ## Phase 2: Agent-to-Agent Communication (depends on Phase 0)
 
