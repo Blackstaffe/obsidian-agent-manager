@@ -807,6 +807,10 @@ export class ChatView extends ItemView implements IChatViewContainer {
 	 */
 	onActivate(): void {
 		this.logger.log(`[ChatView] Activated: ${this.viewId}`);
+		// Acknowledge chat notification dot when user focuses a chat view
+		if (this.plugin.hasChatNotification) {
+			this.plugin.acknowledgeChatComplete();
+		}
 	}
 
 	/**

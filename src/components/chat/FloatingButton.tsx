@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 
 import { setIcon } from "obsidian";
 import type AgentManagerPlugin from "../../plugin";
+import { NOTIFICATION_UPDATE_EVENT } from "../../plugin";
 import { useSettings } from "../../hooks/useSettings";
 import { clampPosition } from "../../shared/floating-utils";
 
@@ -56,6 +57,26 @@ function FloatingButtonComponent({ plugin }: FloatingButtonProps) {
 
 	const [showInstanceMenu, setShowInstanceMenu] = useState(false);
 	const instanceMenuRef = useRef<HTMLDivElement>(null);
+
+	// Chat completion notification dot
+	const [hasNotification, setHasNotification] = useState(
+		plugin.hasChatNotification,
+	);
+	useEffect(() => {
+		const handler = () => setHasNotification(plugin.hasChatNotification);
+		const workspace = plugin.app.workspace;
+		const eventRef = (
+			workspace as unknown as {
+				on: (
+					name: string,
+					callback: () => void,
+				) => ReturnType<typeof workspace.on>;
+			}
+		).on(NOTIFICATION_UPDATE_EVENT, handler);
+		return () => {
+			workspace.offref(eventRef);
+		};
+	}, [plugin]);
 
 	// Button / menu size constants
 	const BUTTON_SIZE = 48;
@@ -203,6 +224,10 @@ function FloatingButtonComponent({ plugin }: FloatingButtonProps) {
 	// Button click handler
 	const handleButtonClick = useCallback(() => {
 		if (wasDragged.current) return;
+		// Acknowledge chat notification on click
+		if (plugin.hasChatNotification) {
+			plugin.acknowledgeChatComplete();
+		}
 		const instances = plugin.getFloatingChatInstances();
 		if (instances.length === 0) {
 			// No instances, create one and expand
@@ -271,6 +296,9 @@ function FloatingButtonComponent({ plugin }: FloatingButtonProps) {
 							if (el) setIcon(el, "bird");
 						}}
 					/>
+				)}
+				{hasNotification && (
+					<span className="agent-notification-dot" />
 				)}
 			</div>
 			{showInstanceMenu && (

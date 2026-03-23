@@ -336,6 +336,7 @@ function AgentPanel({
 export class AgentPanelView extends ItemView {
 	private root: Root | null = null;
 	private plugin: AgentManagerPlugin;
+	private tabDotEl: HTMLElement | null = null;
 
 	constructor(leaf: WorkspaceLeaf, plugin: AgentManagerPlugin) {
 		super(leaf);
@@ -412,10 +413,54 @@ export class AgentPanelView extends ItemView {
 	async onOpen() {
 		this.root = createRoot(this.containerEl.children[1]);
 		this.mount();
+
+		// Add notification dot to the sidebar tab icon
+		const tabIconEl = (
+			this.leaf as unknown as {
+				tabHeaderInnerIconEl?: HTMLElement;
+			}
+		).tabHeaderInnerIconEl;
+		if (tabIconEl) {
+			tabIconEl.addClass("agent-panel-tab-icon-container");
+			this.tabDotEl = tabIconEl.createDiv({
+				cls: "agent-notification-dot",
+			});
+			this.updateTabDot();
+		}
+
+		// Listen for managed agent status changes to update tab dot
+		this.registerEvent(
+			(
+				this.app.workspace as unknown as {
+					on: (
+						name: string,
+						callback: () => void,
+					) => ReturnType<typeof this.app.workspace.on>;
+				}
+			).on(AGENTS_CHANGED_EVENT, () => this.updateTabDot()),
+		);
 	}
 
 	async onClose() {
 		this.root?.unmount();
 		this.root = null;
+		this.tabDotEl?.remove();
+		this.tabDotEl = null;
+	}
+
+	private updateTabDot(): void {
+		if (!this.tabDotEl) return;
+		const hasComplete = this.plugin.hasManagedAgentNotification;
+		const hasFading = this.plugin.hasManagedAgentFading;
+
+		if (hasComplete) {
+			this.tabDotEl.removeClass("is-hidden", "is-fading");
+		} else if (hasFading) {
+			this.tabDotEl.addClass("is-fading");
+			this.tabDotEl.removeClass("is-hidden");
+		} else {
+			this.tabDotEl.addClass("is-hidden");
+			this.tabDotEl.removeClass("is-fading");
+		}
 	}
 }

@@ -41,6 +41,10 @@ import {
 import type { SavedSessionInfo } from "./domain/models/session-info";
 import { initializeLogger } from "./shared/logger";
 import { AgentProcessManager } from "./shared/agent-process-manager";
+import { AGENTS_CHANGED_EVENT } from "./components/agentpanel/AgentPanelView";
+
+/** Fired when any notification dot state changes (chat complete, managed agent complete) */
+export const NOTIFICATION_UPDATE_EVENT = "agent-manager:notification-update";
 
 // Re-export for backward compatibility
 export type { AgentEnvVar, CustomAgentSettings };
@@ -197,6 +201,16 @@ export default class AgentManagerPlugin extends Plugin {
 	/** Plugin-level process manager for managed agent background processes */
 	agentProcessManager!: AgentProcessManager;
 
+	/** Ribbon icon element — used for notification dot */
+	ribbonIconEl!: HTMLElement;
+
+	/**
+	 * Count of unacknowledged regular chatbot completions.
+	 * Incremented when isSending goes false; decremented when user focuses a chat view.
+	 */
+	private _chatCompletePending = 0;
+	private _chatFadeTimer: ReturnType<typeof setTimeout> | null = null;
+
 	/** Map of viewId to AcpAdapter for multi-session support */
 	private _adapters: Map<string, AcpAdapter> = new Map();
 	/** Floating button container (independent from chat view instances) */
@@ -230,14 +244,19 @@ export default class AgentManagerPlugin extends Plugin {
 			void this.activateAgentPanel();
 		});
 
-		const ribbonIconEl = this.addRibbonIcon(
+		this.ribbonIconEl = this.addRibbonIcon(
 			"bird",
 			"Open agent manager",
 			(_evt: MouseEvent) => {
+				// Acknowledge chat notification when user clicks ribbon
+				if (this.hasChatNotification) {
+					this._chatCompletePending = 0;
+					this.updateBirdNotificationDot();
+				}
 				void this.activateView();
 			},
 		);
-		ribbonIconEl.addClass("agent-manager-ribbon-icon");
+		this.ribbonIconEl.addClass("agent-manager-ribbon-icon");
 
 		this.addCommand({
 			id: "open-chat-view",
@@ -395,6 +414,85 @@ export default class AgentManagerPlugin extends Plugin {
 		// Clear legacy storage
 		this.floatingChatInstances.clear();
 	}
+
+	// ============================================================
+	// Notification Dot System
+	// ============================================================
+
+	/**
+	 * Called by useChatController when a regular chatbot finishes responding.
+	 * Shows notification dot on bird ribbon icon and floating button.
+	 */
+	notifyChatComplete(): void {
+		this._chatCompletePending++;
+		this.updateBirdNotificationDot();
+	}
+
+	/**
+	 * Called when user focuses a regular chat view — acknowledges one completion.
+	 * Starts the fade-out when all completions are acknowledged.
+	 */
+	acknowledgeChatComplete(): void {
+		if (this._chatCompletePending <= 0) return;
+		this._chatCompletePending = Math.max(0, this._chatCompletePending - 1);
+		if (this._chatCompletePending === 0) {
+			// Start fade, then remove after animation
+			this.ribbonIconEl.addClass("has-notification-fading");
+			this.ribbonIconEl.removeClass("has-notification");
+			this._chatFadeTimer = setTimeout(() => {
+				this.ribbonIconEl.removeClass("has-notification-fading");
+				this._chatFadeTimer = null;
+			}, 1500);
+		}
+		this.triggerNotificationUpdate();
+	}
+
+	/** Whether any chat completion is pending acknowledgement */
+	get hasChatNotification(): boolean {
+		return this._chatCompletePending > 0;
+	}
+
+	/** Whether any managed agent has "complete" status (not yet opened by user) */
+	get hasManagedAgentNotification(): boolean {
+		return (this.settings.managedAgents ?? []).some(
+			(a) => a.status === "complete",
+		);
+	}
+
+	/** Whether any managed agent has "fading" status (being acknowledged) */
+	get hasManagedAgentFading(): boolean {
+		return (
+			!this.hasManagedAgentNotification &&
+			(this.settings.managedAgents ?? []).some(
+				(a) => a.status === "fading",
+			)
+		);
+	}
+
+	private updateBirdNotificationDot(): void {
+		if (this._chatFadeTimer) {
+			clearTimeout(this._chatFadeTimer);
+			this._chatFadeTimer = null;
+			this.ribbonIconEl.removeClass("has-notification-fading");
+		}
+		this.ribbonIconEl.toggleClass(
+			"has-notification",
+			this._chatCompletePending > 0,
+		);
+		this.triggerNotificationUpdate();
+	}
+
+	private triggerNotificationUpdate(): void {
+		(
+			this.app.workspace as unknown as {
+				trigger: (name: string) => void;
+			}
+		).trigger(NOTIFICATION_UPDATE_EVENT);
+	}
+
+	// ============================================================
+	// Adapter Management
+	// ============================================================
 
 	/**
 	 * Get or create an AcpAdapter for a specific view.

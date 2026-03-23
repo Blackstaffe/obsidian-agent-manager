@@ -940,8 +940,14 @@ export function useChatController(
 			logger.log(
 				`[useChatController] Session messages saved: ${session.sessionId}`,
 			);
+
+			// Notify plugin of chat completion (for notification dot on bird icon)
+			// Only for non-managed-agent chats (managed agents use their own status system)
+			if (!managedAgentId) {
+				plugin.notifyChatComplete();
+			}
 		}
-	}, [isSending, session.sessionId, messages, sessionHistory, logger]);
+	}, [isSending, session.sessionId, messages, sessionHistory, logger, managedAgentId, plugin]);
 
 	// ============================================================
 	// Effects - Auto-mention Active Note Tracking

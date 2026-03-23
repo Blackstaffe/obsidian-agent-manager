@@ -2473,6 +2473,71 @@ If your plugin does not need CSS, delete this file.
 	100% { opacity: 0; }
 }
 
+/* ── Icon notification dots ────────────────────────────────── */
+
+/* Ribbon icon (bird) — notification dot via pseudo-element */
+.agent-manager-ribbon-icon {
+	position: relative;
+}
+
+.agent-manager-ribbon-icon.has-notification::after,
+.agent-manager-ribbon-icon.has-notification-fading::after {
+	content: "";
+	position: absolute;
+	top: 4px;
+	right: 4px;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background-color: var(--interactive-accent);
+	pointer-events: none;
+}
+
+.agent-manager-ribbon-icon.has-notification-fading::after {
+	animation: agent-fade-out 1.5s ease-out forwards;
+}
+
+/* Floating button — notification dot (button already has position: fixed) */
+.agent-manager-floating-button .agent-notification-dot {
+	position: absolute;
+	top: 4px;
+	right: 4px;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background-color: var(--interactive-accent);
+	border: 2px solid var(--background-primary);
+	pointer-events: none;
+	z-index: 1;
+}
+
+/* Birdhouse tab icon — notification dot */
+.agent-panel-tab-icon-container {
+	position: relative;
+}
+
+.agent-panel-tab-icon-container .agent-notification-dot {
+	position: absolute;
+	top: -2px;
+	right: -2px;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background-color: var(--interactive-accent);
+	pointer-events: none;
+	z-index: 1;
+	transition: opacity 0.1s;
+}
+
+.agent-panel-tab-icon-container .agent-notification-dot.is-hidden {
+	opacity: 0;
+	pointer-events: none;
+}
+
+.agent-panel-tab-icon-container .agent-notification-dot.is-fading {
+	animation: agent-fade-out 1.5s ease-out forwards;
+}
+
 /* ── Quickview dropdown ─────────────────────────────────────── */
 .agent-panel-item-detail {
 	padding: 4px 12px 6px calc(var(--nav-indentation-guide-width, 24px) + 12px);
