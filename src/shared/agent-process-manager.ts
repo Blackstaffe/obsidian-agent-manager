@@ -19,6 +19,7 @@ import type { SessionUpdate } from "../domain/models/session-update";
 import { AcpAdapter } from "../adapters/acp/acp.adapter";
 import { applySessionUpdate } from "./message-mutations";
 import { findAgentSettings, buildAgentConfigWithApiKey } from "./settings-utils";
+import { ChatExporter } from "./chat-exporter";
 import { AGENTS_CHANGED_EVENT } from "../components/agentpanel/AgentPanelView";
 import { getLogger } from "./logger";
 
@@ -130,6 +131,13 @@ export class AgentProcessManager {
 	 * Disconnects the adapter, updates status to idle, and removes state.
 	 */
 	async stopProcess(managedAgentId: string): Promise<void> {
+		const state = this.processes.get(managedAgentId);
+
+		// Auto-export chat on process stop (if enabled and there are messages)
+		if (state && state.messages.length > 0) {
+			await this.autoExportIfEnabled(managedAgentId, state);
+		}
+
 		const adapter = this.adapters.get(managedAgentId);
 		if (adapter) {
 			try {
@@ -143,7 +151,6 @@ export class AgentProcessManager {
 			this.adapters.delete(managedAgentId);
 		}
 
-		const state = this.processes.get(managedAgentId);
 		if (state) {
 			state.isSending = false;
 			state.sessionInfo.state = "disconnected";
@@ -247,6 +254,9 @@ export class AgentProcessManager {
 				lastMessagePreview: preview,
 			});
 			this.notifyListeners(managedAgentId);
+
+			// Save session messages to disk (works even with no UI tab open)
+			this.saveSessionMessages(managedAgentId, sessionId, state.messages);
 		}
 	}
 
@@ -358,7 +368,13 @@ export class AgentProcessManager {
 			update.permissionRequest?.isActive === true
 		) {
 			const { requestId, options } = update.permissionRequest;
-			if (this.plugin.settings.autoAllowPermissions) {
+			// Check per-agent autoApprove first, then fall back to global setting
+			const agentConfig = this.plugin.settings.managedAgents?.find(
+				(a) => a.id === managedAgentId,
+			);
+			const shouldAutoApprove =
+				agentConfig?.autoApprove ?? this.plugin.settings.autoAllowPermissions;
+			if (shouldAutoApprove) {
 				// Auto-approve with first allow_once option
 				const allowOption = options.find((o) =>
 					o.kind.startsWith("allow"),
@@ -422,6 +438,58 @@ export class AgentProcessManager {
 				trigger: (name: string) => void;
 			}
 		).trigger(AGENTS_CHANGED_EVENT);
+	}
+
+	/**
+	 * Save session messages to disk via the settings store.
+	 * Fire-and-forget — does not block the caller.
+	 */
+	private saveSessionMessages(
+		managedAgentId: string,
+		sessionId: string,
+		messages: ChatMessage[],
+	): void {
+		const state = this.processes.get(managedAgentId);
+		const agentId = state?.sessionInfo.agentId ?? "";
+		this.plugin.settingsStore
+			.saveSessionMessages(sessionId, agentId, messages, managedAgentId)
+			.catch((err) => {
+				this.logger.warn(
+					`[AgentProcessManager] Failed to save session messages for ${managedAgentId}:`,
+					err,
+				);
+			});
+	}
+
+	/**
+	 * Auto-export chat to markdown if the "auto-export on close" setting is enabled.
+	 */
+	private async autoExportIfEnabled(
+		managedAgentId: string,
+		state: AgentProcessState,
+	): Promise<void> {
+		if (!this.plugin.settings.exportSettings.autoExportOnCloseChat) return;
+		if (!state.sessionInfo.sessionId) return;
+
+		try {
+			const exporter = new ChatExporter(this.plugin);
+			await exporter.exportToMarkdown(
+				state.messages,
+				state.sessionInfo.agentDisplayName,
+				state.sessionInfo.agentId,
+				state.sessionInfo.sessionId,
+				new Date(),
+				false, // Don't open file — this is a background operation
+			);
+			this.logger.log(
+				`[AgentProcessManager] Auto-exported chat for ${managedAgentId}`,
+			);
+		} catch (err) {
+			this.logger.warn(
+				`[AgentProcessManager] Auto-export failed for ${managedAgentId}:`,
+				err,
+			);
+		}
 	}
 
 	private getOrCreateState(managedAgentId: string): AgentProcessState {

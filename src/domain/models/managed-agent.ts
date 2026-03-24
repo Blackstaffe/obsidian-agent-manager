@@ -33,6 +33,12 @@ export interface ManagedAgent {
 	lastActiveAt?: number;
 	/** Duration (ms) of the last run */
 	lastRunDuration?: number;
+	/** Hide tool call output in chat view */
+	hideToolCalls?: boolean;
+	/** Hide thinking/reasoning output in chat view */
+	hideThoughts?: boolean;
+	/** Auto-approve permission requests for this agent */
+	autoApprove?: boolean;
 }
 
 export function createManagedAgent(name = "New Agent", category: AgentCategory = null): ManagedAgent {

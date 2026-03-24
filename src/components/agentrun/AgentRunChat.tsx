@@ -183,6 +183,7 @@ export function AgentRunChat({
 				acpClient={acpClientRef.current}
 				onApprovePermission={permission.approvePermission}
 				hasActivePermission={permission.activePermission != null}
+				managedAgentId={managedAgentId}
 			/>
 
 			<ChatInput

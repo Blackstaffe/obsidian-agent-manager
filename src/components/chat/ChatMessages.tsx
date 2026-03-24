@@ -35,6 +35,8 @@ export interface ChatMessagesProps {
 	) => Promise<void>;
 	/** Whether a permission request is currently pending */
 	hasActivePermission: boolean;
+	/** Managed agent ID — enables per-agent display settings */
+	managedAgentId?: string;
 }
 
 /**
@@ -57,6 +59,7 @@ export function ChatMessages({
 	acpClient,
 	onApprovePermission,
 	hasActivePermission,
+	managedAgentId,
 }: ChatMessagesProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [isAtBottom, setIsAtBottom] = useState(true);
@@ -137,6 +140,7 @@ export function ChatMessages({
 							plugin={plugin}
 							acpClient={acpClient}
 							onApprovePermission={onApprovePermission}
+							managedAgentId={managedAgentId}
 						/>
 					))}
 					<div

@@ -346,6 +346,41 @@ export function AgentSettings({
 							/>
 						</div>
 					</div>
+
+					{/* Row 3: Toggles */}
+					<div className="acs-row">
+						<label className="acs-label">Auto-approve</label>
+						<div
+							className={`checkbox-container${agent.autoApprove ? " is-enabled" : ""}`}
+							onClick={() =>
+								void onUpdate({
+									autoApprove: !agent.autoApprove,
+								})
+							}
+						/>
+					</div>
+					<div className="acs-row">
+						<label className="acs-label">Hide tool calls</label>
+						<div
+							className={`checkbox-container${agent.hideToolCalls ? " is-enabled" : ""}`}
+							onClick={() =>
+								void onUpdate({
+									hideToolCalls: !agent.hideToolCalls,
+								})
+							}
+						/>
+					</div>
+					<div className="acs-row">
+						<label className="acs-label">Hide thinking</label>
+						<div
+							className={`checkbox-container${agent.hideThoughts ? " is-enabled" : ""}`}
+							onClick={() =>
+								void onUpdate({
+									hideThoughts: !agent.hideThoughts,
+								})
+							}
+						/>
+					</div>
 				</div>
 			)}
 		</div>

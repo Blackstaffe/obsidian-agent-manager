@@ -757,15 +757,8 @@ export function useAgentProcess(
 			.catch((err: unknown) => logger.error("Agent update check failed:", err));
 	}, [isSessionReady, session.agentInfo, logger]);
 
-	// Save messages on turn end
-	const prevIsSendingRef = useRef(false);
-	useEffect(() => {
-		const wasSending = prevIsSendingRef.current;
-		prevIsSendingRef.current = isSending;
-		if (wasSending && !isSending && session.sessionId && messages.length > 0) {
-			sessionHistory.saveSessionMessages(session.sessionId, messages);
-		}
-	}, [isSending, session.sessionId, messages, sessionHistory]);
+	// Session messages are saved by AgentProcessManager on turn end (no UI dependency).
+	// Session metadata (title, timestamps) is saved by handleSendMessage on first message.
 
 	// ── Return ───────────────────────────────────────────────────────────────
 	return {

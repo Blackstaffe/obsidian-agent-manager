@@ -16,6 +16,8 @@ interface MessageRendererProps {
 		requestId: string,
 		optionId: string,
 	) => Promise<void>;
+	/** Managed agent ID — enables per-agent hide settings */
+	managedAgentId?: string;
 }
 
 /**
@@ -59,13 +61,39 @@ function groupContent(
 	return groups;
 }
 
+/** Content types suppressed by hideToolCalls */
+const TOOL_CALL_TYPES = new Set(["tool_call", "terminal", "plan"]);
+/** Content types suppressed by hideThoughts */
+const THOUGHT_TYPES = new Set(["agent_thought"]);
+
 export function MessageRenderer({
 	message,
 	plugin,
 	acpClient,
 	onApprovePermission,
+	managedAgentId,
 }: MessageRendererProps) {
-	const groups = groupContent(message.content);
+	// Per-agent hide settings (managed agents only)
+	const agent = managedAgentId
+		? plugin.settings.managedAgents?.find((a) => a.id === managedAgentId)
+		: undefined;
+	const hideToolCalls = agent?.hideToolCalls ?? false;
+	const hideThoughts = agent?.hideThoughts ?? false;
+
+	// Filter out suppressed content types
+	const visibleContent =
+		hideToolCalls || hideThoughts
+			? message.content.filter((c) => {
+					if (hideToolCalls && TOOL_CALL_TYPES.has(c.type)) return false;
+					if (hideThoughts && THOUGHT_TYPES.has(c.type)) return false;
+					return true;
+				})
+			: message.content;
+
+	// Don't render empty message bubbles
+	if (visibleContent.length === 0) return null;
+
+	const groups = groupContent(visibleContent);
 
 	return (
 		<div

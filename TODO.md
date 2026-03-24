@@ -5,8 +5,11 @@
 - [ ] Fix alignment of explorer to match file explorer
 - [ ] Fix chevron sizes to match file explorer
 - [ ] Make quickview text clickable to open agent
-- [ ] Investigate option to suppress tool use and thinking output from chat view (user-facing toggle)
+- [x] Investigate option to suppress tool use and thinking output from chat view (user-facing toggle)
 - [ ] Add model selection to managed agent config (let user pick which model to use per agent)
+- [ ] Fix notification dot fade-out: should trigger when tab gains focus, not only on click
+- [ ] Change user chat bubble to a slightly darker grey for better visual distinction
+- [ ] Only pass @[[instruction file]] mention in the first chat message (not on every message)
 
 ---
 
@@ -37,20 +40,20 @@ Plugin
 
 ### Implementation Steps
 
-- [ ] Create `src/shared/message-mutations.ts` — extract message mutation logic from useChat into pure functions (`applySessionUpdate(messages, update) → messages`)
-- [ ] Create `src/domain/models/agent-process.ts` — `AgentProcessState` interface (adapter, messages, session, isSending, status, listeners)
-- [ ] Create `src/shared/agent-process-manager.ts` — core service: `startProcess()`, `stopProcess()`, `getProcess()`, `subscribe()`, `sendMessage()`, `cancelOperation()`, `stopAll()`
-- [ ] Wire into `plugin.ts` — instantiate in `onload()`, call `stopAll()` in `onunload()`/quit, expose as public property
-- [ ] Create `src/hooks/useAgentProcess.ts` — React hook that subscribes to AgentProcessManager, returns same shape as `UseChatControllerReturn`
-- [ ] Update `AgentRunView.tsx` — remove process kill from `onClose()`, just unmount React root
-- [ ] Update `AgentRunChat.tsx` — use `useAgentProcess` instead of `useChatController`
-- [ ] Move session-save logic to process manager (save on turn end regardless of UI state)
-- [ ] Handle permissions while UI detached — queue pending requests, drain on reconnect
-- [ ] Move status dot updates to process manager (update `managedAgents` settings directly)
+- [x] Create `src/shared/message-mutations.ts` — extract message mutation logic from useChat into pure functions (`applySessionUpdate(messages, update) → messages`)
+- [x] Create `src/domain/models/agent-process.ts` — `AgentProcessState` interface (adapter, messages, session, isSending, status, listeners)
+- [x] Create `src/shared/agent-process-manager.ts` — core service: `startProcess()`, `stopProcess()`, `getProcess()`, `subscribe()`, `sendMessage()`, `cancelOperation()`, `stopAll()`
+- [x] Wire into `plugin.ts` — instantiate in `onload()`, call `stopAll()` in `onunload()`/quit, expose as public property
+- [x] Create `src/hooks/useAgentProcess.ts` — React hook that subscribes to AgentProcessManager, returns same shape as `UseChatControllerReturn`
+- [x] Update `AgentRunView.tsx` — remove process kill from `onClose()`, just unmount React root
+- [x] Update `AgentRunChat.tsx` — use `useAgentProcess` instead of `useChatController`
+- [x] Move session-save logic to process manager (save on turn end regardless of UI state)
+- [x] Handle permissions while UI detached — queue pending requests, drain on reconnect
+- [x] Move status dot updates to process manager (update `managedAgents` settings directly)
 
 ### Considerations
 - **Permission queue**: If agent requests permission while tab is closed, buffer it and show when tab reopens (or auto-approve per settings)
-- **Auto-export**: Should trigger on process stop, not tab close
+- **Auto-export**: ✅ Triggers on process stop via `AgentProcessManager.stopProcess()`
 - **Multiple tabs**: Multiple tabs can subscribe to same process; only one handles permissions
 - **Memory**: Consider message limit for very long-running agents
 
