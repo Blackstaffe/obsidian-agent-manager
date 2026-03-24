@@ -367,7 +367,8 @@ export function AgentSettings({
 					<SessionConfigDropdowns
 						snapshot={snapshot}
 						plugin={plugin}
-						managedAgentId={agent.id}
+						agent={agent}
+						onUpdate={onUpdate}
 					/>
 
 					{/* Row 4: Toggles */}
@@ -404,18 +405,45 @@ export function AgentSettings({
 function SessionConfigDropdowns({
 	snapshot,
 	plugin,
-	managedAgentId,
+	agent,
+	onUpdate,
 }: {
 	snapshot: ProcessStateSnapshot | null;
 	plugin: AgentManagerPlugin;
-	managedAgentId: string;
+	agent: ManagedAgent;
+	onUpdate: (updates: Partial<ManagedAgent>) => Promise<void>;
 }) {
 	const info = snapshot?.sessionInfo;
 	if (!info || info.state !== "ready") return null;
 
+	const managedAgentId = agent.id;
 	const adapter = plugin.agentProcessManager.getAdapter(managedAgentId);
 	const sessionId = info.sessionId;
 	if (!adapter || !sessionId) return null;
+
+	const manager = plugin.agentProcessManager;
+
+	const handleConfigOptionChange = useCallback(
+		async (configId: string, value: string) => {
+			const updatedOptions = await adapter.setSessionConfigOption(
+				sessionId,
+				configId,
+				value,
+			);
+			// Eagerly update process manager state so dropdown reflects new value
+			manager.updateSessionInfo(managedAgentId, {
+				configOptions: updatedOptions,
+			});
+			// Persist to managed agent config
+			void onUpdate({
+				savedConfigOptions: {
+					...(agent.savedConfigOptions ?? {}),
+					[configId]: value,
+				},
+			});
+		},
+		[adapter, sessionId, manager, managedAgentId, agent.savedConfigOptions, onUpdate],
+	);
 
 	// Prefer configOptions (new API) over legacy modes/models
 	if (info.configOptions && info.configOptions.length > 0) {
@@ -426,11 +454,7 @@ function SessionConfigDropdowns({
 						key={option.id}
 						option={option}
 						onChange={(value) =>
-							void adapter.setSessionConfigOption(
-								sessionId,
-								option.id,
-								value,
-							)
+							void handleConfigOptionChange(option.id, value)
 						}
 					/>
 				))}
@@ -447,9 +471,10 @@ function SessionConfigDropdowns({
 					<select
 						className="acs-input dropdown"
 						value={info.modes.currentModeId}
-						onChange={(e) =>
-							void adapter.setSessionMode(sessionId, e.target.value)
-						}
+						onChange={(e) => {
+							void adapter.setSessionMode(sessionId, e.target.value);
+							void onUpdate({ savedModeId: e.target.value });
+						}}
 					>
 						{info.modes.availableModes.map((m) => (
 							<option key={m.id} value={m.id}>
@@ -465,9 +490,10 @@ function SessionConfigDropdowns({
 					<select
 						className="acs-input dropdown"
 						value={info.models.currentModelId}
-						onChange={(e) =>
-							void adapter.setSessionModel(sessionId, e.target.value)
-						}
+						onChange={(e) => {
+							void adapter.setSessionModel(sessionId, e.target.value);
+							void onUpdate({ savedModelId: e.target.value });
+						}}
 					>
 						{info.models.availableModels.map((m) => (
 							<option key={m.modelId} value={m.modelId}>

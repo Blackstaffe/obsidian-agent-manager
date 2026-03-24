@@ -37,6 +37,12 @@ export interface ManagedAgent {
 	hideToolCalls?: boolean;
 	/** Hide thinking/reasoning output in chat view */
 	hideThoughts?: boolean;
+	/** Persisted mode selection (legacy mode/model API) */
+	savedModeId?: string;
+	/** Persisted model selection (legacy mode/model API) */
+	savedModelId?: string;
+	/** Persisted config option selections (new configOptions API), keyed by option id */
+	savedConfigOptions?: Record<string, string>;
 }
 
 export function createManagedAgent(name = "New Agent", category: AgentCategory = null): ManagedAgent {

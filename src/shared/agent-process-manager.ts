@@ -10,6 +10,7 @@ import { FileSystemAdapter } from "obsidian";
 import type AgentManagerPlugin from "../plugin";
 import type {
 	AgentProcessState,
+	AgentSessionInfo,
 	ProcessStateSnapshot,
 	PendingPermission,
 } from "../domain/models/agent-process";
@@ -113,6 +114,8 @@ export class AgentProcessManager {
 			state.sessionInfo.configOptions = sessionResult.configOptions;
 			state.sessionInfo.state = "ready";
 
+			await this.applyPersistedConfig(managedAgentId, adapter, sessionResult.sessionId);
+
 			this.logger.log(
 				`[AgentProcessManager] Process started for ${managedAgentId}, session ${sessionResult.sessionId}`,
 			);
@@ -195,6 +198,20 @@ export class AgentProcessManager {
 	}
 
 	/**
+	 * Merge partial updates into a process's sessionInfo and notify listeners.
+	 * Used by UI components that get updated config from adapter calls.
+	 */
+	updateSessionInfo(
+		managedAgentId: string,
+		updates: Partial<AgentSessionInfo>,
+	): void {
+		const state = this.processes.get(managedAgentId);
+		if (!state) return;
+		state.sessionInfo = { ...state.sessionInfo, ...updates };
+		this.notifyListeners(managedAgentId);
+	}
+
+	/**
 	 * Subscribe to process state changes.
 	 * The listener is called immediately with the current snapshot if state exists.
 	 * Returns an unsubscribe function — calling it does NOT stop the process.
@@ -238,6 +255,10 @@ export class AgentProcessManager {
 		this.notifyListeners(managedAgentId);
 		await this.updateManagedAgentStatus(managedAgentId, "running");
 
+		this.logger.log(
+			`[AgentProcessManager] sendMessage: agent=${managedAgentId} session=${sessionId} contentBlocks=${content.length} existingMessages=${state.messages.length}`,
+		);
+
 		try {
 			await adapter.sendPrompt(sessionId, content);
 		} finally {
@@ -279,6 +300,9 @@ export class AgentProcessManager {
 		state.sessionInfo.modes = sessionResult.modes;
 		state.sessionInfo.models = sessionResult.models;
 		state.sessionInfo.configOptions = sessionResult.configOptions;
+
+		await this.applyPersistedConfig(managedAgentId, adapter, sessionResult.sessionId);
+
 		this.notifyListeners(managedAgentId);
 	}
 
@@ -352,6 +376,9 @@ export class AgentProcessManager {
 						currentModeId: update.currentModeId,
 					};
 				}
+				break;
+			case "config_option_update":
+				state.sessionInfo.configOptions = update.configOptions;
 				break;
 			case "usage_update":
 				state.sessionInfo.usage = {
@@ -484,6 +511,70 @@ export class AgentProcessManager {
 				`[AgentProcessManager] Auto-export failed for ${managedAgentId}:`,
 				err,
 			);
+		}
+	}
+
+	/**
+	 * Apply persisted mode/model/configOptions from ManagedAgent settings to a live session.
+	 * Called after startProcess and newSession complete.
+	 */
+	private async applyPersistedConfig(
+		managedAgentId: string,
+		adapter: AcpAdapter,
+		sessionId: string,
+	): Promise<void> {
+		const managedAgent = this.plugin.settings.managedAgents.find(
+			(a) => a.id === managedAgentId,
+		);
+		if (!managedAgent) return;
+
+		const state = this.processes.get(managedAgentId);
+		if (!state) return;
+
+		// Apply saved configOptions (new API)
+		if (managedAgent.savedConfigOptions && state.sessionInfo.configOptions) {
+			for (const [configId, value] of Object.entries(managedAgent.savedConfigOptions)) {
+				const option = state.sessionInfo.configOptions.find((o) => o.id === configId);
+				if (option && option.currentValue !== value) {
+					try {
+						const updatedOptions = await adapter.setSessionConfigOption(sessionId, configId, value);
+						state.sessionInfo.configOptions = updatedOptions;
+					} catch (err) {
+						this.logger.warn(
+							`[AgentProcessManager] Failed to apply saved config option "${configId}":`,
+							err,
+						);
+					}
+				}
+			}
+		}
+
+		// Apply saved mode (legacy API)
+		if (managedAgent.savedModeId && state.sessionInfo.modes) {
+			const available = state.sessionInfo.modes.availableModes.find(
+				(m) => m.id === managedAgent.savedModeId,
+			);
+			if (available && state.sessionInfo.modes.currentModeId !== managedAgent.savedModeId) {
+				try {
+					await adapter.setSessionMode(sessionId, managedAgent.savedModeId);
+				} catch (err) {
+					this.logger.warn(`[AgentProcessManager] Failed to apply saved mode:`, err);
+				}
+			}
+		}
+
+		// Apply saved model (legacy API)
+		if (managedAgent.savedModelId && state.sessionInfo.models) {
+			const available = state.sessionInfo.models.availableModels.find(
+				(m) => m.modelId === managedAgent.savedModelId,
+			);
+			if (available && state.sessionInfo.models.currentModelId !== managedAgent.savedModelId) {
+				try {
+					await adapter.setSessionModel(sessionId, managedAgent.savedModelId);
+				} catch (err) {
+					this.logger.warn(`[AgentProcessManager] Failed to apply saved model:`, err);
+				}
+			}
 		}
 	}
 

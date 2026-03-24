@@ -9,8 +9,11 @@
 - [x] Add model selection to managed agent config (let user pick which model to use per agent)
 - [x] Fix notification dot fade-out: should trigger when tab gains focus, not only on click
 - [x] Change user chat bubble to a slightly darker grey for better visual distinction
-- [x] Only pass @[[instruction file]] mention in the first chat message (not on every message)
+- [ ] Only pass @[[instruction file]] mention in the first chat message (reverted — agent loses context without it on subsequent messages)
 - [x] Add global plugin setting to hide the initial "Run process" user message (with instruction file mention) from chat view
+- [ ] Mode and model settings should be per-process (saved to ManagedAgent config), not per-session (currently lost on restart)
+- [ ] Fix status dot locations (positioning off)
+- [ ] Auto-update tab titles when agent name is changed
 
 ---
 
@@ -60,22 +63,7 @@ Plugin
 
 ---
 
-## Phase 1A: Heartbeat / Scheduler (depends on Phase 0)
-
-Agents wake up on a schedule, run headlessly, show status in explorer. Click to load session.
-
-- [ ] Add `lastRunAt`, `lastRunResult`, `heartbeatEnabled`, `runDuration` to ManagedAgent model
-- [ ] Add `heartbeatConfig` to plugin settings (globalEnabled, interval, catchUpOnStartup, maxConcurrentRuns)
-- [ ] Add `croner` dependency for cron expression parsing
-- [ ] Create `schedule-utils.ts` (parseSchedule, getNextRun, isOverdue, toHumanReadable)
-- [ ] Create `heartbeat-scheduler.ts` (60s tick, checks which agents are due)
-- [ ] Create `heartbeat-runner.ts` (headless agent execution, saves session per-process)
-- [ ] Startup catch-up (run overdue agents on Obsidian open)
-- [ ] UI: heartbeat toggle + schedule validation in AgentSettings
-- [ ] UI: last/next run time in AgentPanelView
-- [ ] UI: global heartbeat settings in plugin settings tab
-
-## Phase 1B: Agent Memory ⚠️ DESIGN TBD
+## Phase 1A: Agent Memory ⚠️ DESIGN TBD
 
 Persistent memory for agents across sessions. **Approach not finalized — may change.**
 
@@ -95,6 +83,21 @@ Set each agent's `cwd` to a process folder containing a `CLAUDE.md` that tells C
 - [ ] UI: memory file picker in AgentSettings
 - [ ] Auto-create memory file on first run
 - [ ] Optional: per-agent `workingDirectory` setting (enables CLAUDE.md discovery for Claude Code agents)
+
+## Phase 1B: Heartbeat / Scheduler (depends on Phase 0)
+
+Agents wake up on a schedule, run headlessly, show status in explorer. Click to load session.
+
+- [ ] Add `lastRunAt`, `lastRunResult`, `heartbeatEnabled`, `runDuration` to ManagedAgent model
+- [ ] Add `heartbeatConfig` to plugin settings (globalEnabled, interval, catchUpOnStartup, maxConcurrentRuns)
+- [ ] Add `croner` dependency for cron expression parsing
+- [ ] Create `schedule-utils.ts` (parseSchedule, getNextRun, isOverdue, toHumanReadable)
+- [ ] Create `heartbeat-scheduler.ts` (60s tick, checks which agents are due)
+- [ ] Create `heartbeat-runner.ts` (headless agent execution, saves session per-process)
+- [ ] Startup catch-up (run overdue agents on Obsidian open)
+- [ ] UI: heartbeat toggle + schedule validation in AgentSettings
+- [ ] UI: last/next run time in AgentPanelView
+- [ ] UI: global heartbeat settings in plugin settings tab
 
 ## Phase 2: Agent-to-Agent Communication (depends on Phase 0)
 

@@ -69,13 +69,11 @@ export function AgentRunChat({
 	const acpClientRef = useRef<IAcpClient>(acpAdapter);
 
 	/** Track whether agent run has been started (for resume logic) */
-	const hasStartedRef = useRef(false);
+	const hasStartedRef = useRef(messages.length > 0);
 
-	// Reset flag when the session restarts (messages cleared)
+	// Sync flag with message state: reset when cleared, set when populated
 	React.useEffect(() => {
-		if (messages.length === 0) {
-			hasStartedRef.current = false;
-		}
+		hasStartedRef.current = messages.length > 0;
 	}, [messages.length]);
 
 	// ── Header menu with agent switching ─────────────────────────
