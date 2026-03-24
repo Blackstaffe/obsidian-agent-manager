@@ -159,6 +159,7 @@ export class AgentRunView extends ItemView {
 					) => ReturnType<typeof this.app.workspace.on>;
 				}
 			).on(AGENTS_CHANGED_EVENT, () => {
+				(this.leaf as unknown as { updateHeader: () => void }).updateHeader();
 				this.updateTabDot();
 				// If already focused and status just became "complete", auto-fade
 				if (this.app.workspace.activeLeaf?.view === this) {
