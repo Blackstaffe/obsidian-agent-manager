@@ -50,46 +50,6 @@ function AgentRunComponent({
 		[agentId, plugin],
 	);
 
-	// Fade out "complete" dot after 2s — triggered on focus or when status becomes complete while focused
-	const fadeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-	const scheduleFadeOut = React.useCallback(() => {
-		if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
-		// Transition: complete → fading (CSS fade animation) → idle (dot removed)
-		void handleUpdate({ status: "fading" });
-		fadeTimerRef.current = setTimeout(() => {
-			void handleUpdate({ status: "idle" });
-			fadeTimerRef.current = null;
-		}, 1500); // matches CSS agent-fade-out duration
-	}, [handleUpdate]);
-
-	// When this view gains focus, fade out the complete dot
-	React.useEffect(() => {
-		const handler = () => {
-			const activeLeaf = plugin.app.workspace.activeLeaf;
-			if (activeLeaf?.view === view) {
-				const current = plugin.settings.managedAgents.find(
-					(a) => a.id === agentId,
-				);
-				if (current?.status === "complete") {
-					scheduleFadeOut();
-				}
-			}
-		};
-		plugin.app.workspace.on("active-leaf-change", handler);
-		return () => {
-			plugin.app.workspace.off("active-leaf-change", handler);
-			if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
-		};
-	}, [agentId, plugin, view, scheduleFadeOut]);
-
-	// When status becomes "complete" while already focused, start fade
-	React.useEffect(() => {
-		if (agent?.status === "complete" && plugin.app.workspace.activeLeaf?.view === view) {
-			scheduleFadeOut();
-		}
-	}, [agent?.status, plugin, view, scheduleFadeOut]);
-
 	if (!agent) {
 		return <div className="agent-run-empty">Agent not found.</div>;
 	}
@@ -119,6 +79,11 @@ export class AgentRunView extends ItemView {
 	private plugin: AgentManagerPlugin;
 	private agentId = "";
 	readonly viewId: string;
+
+	/** Notification dot element on the tab's birdhouse icon */
+	private tabDotEl: HTMLElement | null = null;
+	/** Timer for fade-out animation */
+	private fadeTimer: ReturnType<typeof setTimeout> | null = null;
 
 	constructor(leaf: WorkspaceLeaf, plugin: AgentManagerPlugin) {
 		super(leaf);
@@ -154,17 +119,75 @@ export class AgentRunView extends ItemView {
 		}
 		await super.setState(state, result);
 		this.render();
+		// Update dot after agent ID is set
+		this.updateTabDot();
 	}
 
 	async onOpen() {
 		this.root = createRoot(this.containerEl.children[1]);
 		this.render();
+
+		// Add notification dot to this tab's birdhouse icon
+		const tabIconEl = (
+			this.leaf as unknown as {
+				tabHeaderInnerIconEl?: HTMLElement;
+			}
+		).tabHeaderInnerIconEl;
+		if (tabIconEl) {
+			tabIconEl.addClass("agent-panel-tab-icon-container");
+			this.tabDotEl = tabIconEl.createDiv({
+				cls: "agent-notification-dot is-hidden",
+			});
+		}
+
+		// When this leaf gains focus and status is "complete", start fade
+		this.registerEvent(
+			this.app.workspace.on("active-leaf-change", (leaf) => {
+				if (leaf?.view === this) {
+					this.tryScheduleFade();
+				}
+			}),
+		);
+
+		// When agent statuses change (e.g. process completes), update dot
+		this.registerEvent(
+			(
+				this.app.workspace as unknown as {
+					on: (
+						name: string,
+						callback: () => void,
+					) => ReturnType<typeof this.app.workspace.on>;
+				}
+			).on(AGENTS_CHANGED_EVENT, () => {
+				this.updateTabDot();
+				// If already focused and status just became "complete", auto-fade
+				if (this.app.workspace.activeLeaf?.view === this) {
+					this.tryScheduleFade();
+				}
+			}),
+		);
+
+		this.updateTabDot();
 	}
 
 	async onClose() {
 		// Process keeps running — AgentProcessManager owns the lifecycle
 		this.root?.unmount();
 		this.root = null;
+		this.tabDotEl?.remove();
+		this.tabDotEl = null;
+		if (this.fadeTimer) {
+			clearTimeout(this.fadeTimer);
+			this.fadeTimer = null;
+		}
+	}
+
+	/**
+	 * Called externally (e.g., from AgentPanelView.openAgentRunView)
+	 * to acknowledge a "complete" dot when this view is revealed.
+	 */
+	acknowledgeComplete(): void {
+		this.tryScheduleFade();
 	}
 
 	render() {
@@ -176,5 +199,64 @@ export class AgentRunView extends ItemView {
 				view={this}
 			/>,
 		);
+	}
+
+	// ── Tab dot management ──────────────────────────────────────────
+
+	private getAgentStatus(): string {
+		const agent = this.plugin.settings.managedAgents.find(
+			(a) => a.id === this.agentId,
+		);
+		return agent?.status ?? "idle";
+	}
+
+	private updateTabDot(): void {
+		if (!this.tabDotEl) return;
+		const status = this.getAgentStatus();
+
+		if (status === "running") {
+			this.tabDotEl.removeClass("is-hidden", "is-fading", "is-complete");
+			this.tabDotEl.addClass("is-running");
+		} else if (status === "complete") {
+			this.tabDotEl.removeClass("is-hidden", "is-fading", "is-running");
+			this.tabDotEl.addClass("is-complete");
+		} else if (status === "fading") {
+			this.tabDotEl.removeClass("is-hidden", "is-running", "is-complete");
+			this.tabDotEl.addClass("is-fading");
+		} else {
+			this.tabDotEl.addClass("is-hidden");
+			this.tabDotEl.removeClass("is-running", "is-complete", "is-fading");
+		}
+	}
+
+	/**
+	 * If the agent status is "complete", start fade → idle transition.
+	 */
+	private tryScheduleFade(): void {
+		const status = this.getAgentStatus();
+		if (status !== "complete") return;
+
+		if (this.fadeTimer) clearTimeout(this.fadeTimer);
+
+		// complete → fading (CSS animation) → idle
+		this.setAgentStatus("fading");
+		this.fadeTimer = setTimeout(() => {
+			this.setAgentStatus("idle");
+			this.fadeTimer = null;
+		}, 1500);
+	}
+
+	private setAgentStatus(newStatus: string): void {
+		const idx = this.plugin.settings.managedAgents.findIndex(
+			(a) => a.id === this.agentId,
+		);
+		if (idx === -1) return;
+		this.plugin.settings.managedAgents[idx] = {
+			...this.plugin.settings.managedAgents[idx],
+			status: newStatus as ManagedAgent["status"],
+		};
+		void this.plugin.saveSettings();
+		(this.app.workspace as unknown as { trigger: (name: string) => void })
+			.trigger(AGENTS_CHANGED_EVENT);
 	}
 }

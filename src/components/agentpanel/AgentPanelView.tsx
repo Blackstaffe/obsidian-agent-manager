@@ -5,7 +5,7 @@ import { createRoot, Root } from "react-dom/client";
 import type AgentManagerPlugin from "../../plugin";
 import type { ManagedAgent } from "../../domain/models/managed-agent";
 import { createManagedAgent } from "../../domain/models/managed-agent";
-import { VIEW_TYPE_AGENT_RUN } from "../agentrun/AgentRunView";
+import { VIEW_TYPE_AGENT_RUN, AgentRunView } from "../agentrun/AgentRunView";
 
 export const VIEW_TYPE_AGENT_PANEL = "agent-manager-panel";
 
@@ -370,6 +370,10 @@ export class AgentPanelView extends ItemView {
 			.find((l) => (l.view.getState() as { agentId?: string }).agentId === agent.id);
 		if (existing) {
 			this.app.workspace.revealLeaf(existing);
+			// Acknowledge "complete" dot even if this leaf was already active
+			if (existing.view instanceof AgentRunView) {
+				existing.view.acknowledgeComplete();
+			}
 			return;
 		}
 
@@ -381,6 +385,10 @@ export class AgentPanelView extends ItemView {
 			state: { agentId: agent.id },
 		});
 		this.app.workspace.revealLeaf(leaf);
+		// Acknowledge on newly created view too
+		if (leaf.view instanceof AgentRunView) {
+			leaf.view.acknowledgeComplete();
+		}
 	}
 
 	private async createAndOpenAgent() {
