@@ -368,12 +368,7 @@ export class AgentProcessManager {
 			update.permissionRequest?.isActive === true
 		) {
 			const { requestId, options } = update.permissionRequest;
-			// Check per-agent autoApprove first, then fall back to global setting
-			const agentConfig = this.plugin.settings.managedAgents?.find(
-				(a) => a.id === managedAgentId,
-			);
-			const shouldAutoApprove =
-				agentConfig?.autoApprove ?? this.plugin.settings.autoAllowPermissions;
+			const shouldAutoApprove = this.plugin.settings.autoAllowPermissions;
 			if (shouldAutoApprove) {
 				// Auto-approve with first allow_once option
 				const allowOption = options.find((o) =>

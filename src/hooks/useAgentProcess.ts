@@ -318,9 +318,11 @@ export function useAgentProcess(
 			}
 
 			// Determine auto-mention note
+			// Only attach the instruction file on the first message of a session
 			let activeNoteForMention: import("../domain/ports/vault-access.port").NoteMetadata | null =
 				null;
-			if (instructionsPath) {
+			const isFirstMessage = messages.length === 0;
+			if (instructionsPath && isFirstMessage) {
 				try {
 					const file = plugin.app.vault.getFileByPath(instructionsPath);
 					if (file) {
@@ -393,8 +395,6 @@ export function useAgentProcess(
 			};
 
 			lastUserMessageRef.current = content;
-
-			const isFirstMessage = messages.length === 0;
 
 			try {
 				await manager.sendMessage(

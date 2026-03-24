@@ -117,6 +117,8 @@ export interface AgentManagerPluginSettings {
 	managedAgents: ManagedAgent[];
 	/** Vault-relative path to process template file for creating new instructions */
 	processTemplatePath: string;
+	/** Hide the initial "Run process" user message in managed agent chat views */
+	hideRunProcessMessage: boolean;
 	// Floating chat settings
 	enableFloatingChat: boolean;
 	floatingButtonImage: string;
@@ -184,6 +186,7 @@ const DEFAULT_SETTINGS: AgentManagerPluginSettings = {
 	lastUsedModes: {},
 	managedAgents: [],
 	processTemplatePath: "",
+	hideRunProcessMessage: false,
 	enableFloatingChat: false,
 	floatingButtonImage: "",
 	floatingWindowSize: { width: 400, height: 500 },
@@ -1366,6 +1369,10 @@ export default class AgentManagerPlugin extends Plugin {
 				typeof rawSettings.processTemplatePath === "string"
 					? rawSettings.processTemplatePath
 					: DEFAULT_SETTINGS.processTemplatePath,
+			hideRunProcessMessage:
+				typeof rawSettings.hideRunProcessMessage === "boolean"
+					? rawSettings.hideRunProcessMessage
+					: DEFAULT_SETTINGS.hideRunProcessMessage,
 		};
 
 		this.ensureDefaultAgentId();

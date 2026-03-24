@@ -878,6 +878,15 @@ export class ChatView extends ItemView implements IChatViewContainer {
 		// Register with plugin's view registry
 		this.plugin.viewRegistry.register(this);
 
+		// Acknowledge chat notification dot when this leaf gains focus
+		this.registerEvent(
+			this.app.workspace.on("active-leaf-change", (leaf) => {
+				if (leaf?.view === this && this.plugin.hasChatNotification) {
+					this.plugin.acknowledgeChatComplete();
+				}
+			}),
+		);
+
 		return Promise.resolve();
 	}
 

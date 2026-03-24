@@ -133,16 +133,32 @@ export function ChatMessages({
 				</div>
 			) : (
 				<>
-					{messages.map((message) => (
-						<MessageRenderer
-							key={message.id}
-							message={message}
-							plugin={plugin}
-							acpClient={acpClient}
-							onApprovePermission={onApprovePermission}
-							managedAgentId={managedAgentId}
-						/>
-					))}
+					{messages.map((message, index) => {
+						// Optionally hide the initial "Run process." message in managed agent views
+						if (
+							index === 0 &&
+							managedAgentId &&
+							plugin.settings.hideRunProcessMessage &&
+							message.role === "user" &&
+							message.content.some(
+								(c) =>
+									c.type === "text" && c.text === "Run process." ||
+									c.type === "text_with_context" && c.text === "Run process.",
+							)
+						) {
+							return null;
+						}
+						return (
+							<MessageRenderer
+								key={message.id}
+								message={message}
+								plugin={plugin}
+								acpClient={acpClient}
+								onApprovePermission={onApprovePermission}
+								managedAgentId={managedAgentId}
+							/>
+						);
+					})}
 					<div
 						className={`agent-manager-loading-indicator ${!isSending ? "agent-manager-hidden" : ""}`}
 					>

@@ -670,6 +670,20 @@ export class AgentManagerSettingTab extends PluginSettingTab {
 					}),
 			);
 
+		new Setting(containerEl)
+			.setName("Hide run process message")
+			.setDesc(
+				"Hide the initial \"Run process\" user message (with instruction file mention) in managed agent chat views.",
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.hideRunProcessMessage)
+					.onChange(async (value) => {
+						this.plugin.settings.hideRunProcessMessage = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
 		// ─────────────────────────────────────────────────────────────────────
 		// Developer
 		// ─────────────────────────────────────────────────────────────────────

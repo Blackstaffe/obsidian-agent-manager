@@ -4,12 +4,13 @@
 
 - [ ] Fix alignment of explorer to match file explorer
 - [ ] Fix chevron sizes to match file explorer
-- [ ] Make quickview text clickable to open agent
+- [x] Make quickview text clickable to open agent
 - [x] Investigate option to suppress tool use and thinking output from chat view (user-facing toggle)
-- [ ] Add model selection to managed agent config (let user pick which model to use per agent)
-- [ ] Fix notification dot fade-out: should trigger when tab gains focus, not only on click
-- [ ] Change user chat bubble to a slightly darker grey for better visual distinction
-- [ ] Only pass @[[instruction file]] mention in the first chat message (not on every message)
+- [x] Add model selection to managed agent config (let user pick which model to use per agent)
+- [x] Fix notification dot fade-out: should trigger when tab gains focus, not only on click
+- [x] Change user chat bubble to a slightly darker grey for better visual distinction
+- [x] Only pass @[[instruction file]] mention in the first chat message (not on every message)
+- [x] Add global plugin setting to hide the initial "Run process" user message (with instruction file mention) from chat view
 
 ---
 

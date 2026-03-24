@@ -1322,7 +1322,7 @@ If your plugin does not need CSS, delete this file.
 }
 
 .agent-manager-message-renderer.agent-manager-message-user {
-	background-color: var(--background-primary);
+	background-color: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 8px;
 }
@@ -2543,6 +2543,12 @@ If your plugin does not need CSS, delete this file.
 	padding: 4px 12px 6px calc(var(--nav-indentation-guide-width, 24px) + 12px);
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
+	cursor: pointer;
+	border-radius: 4px;
+}
+
+.agent-panel-item-detail:hover {
+	background-color: var(--nav-item-background-hover);
 }
 
 .agent-panel-quickview {

@@ -149,7 +149,10 @@ function AgentRow({
 				<StatusDot status={agent.status} />
 			</div>
 			{expanded && (
-				<div className="agent-panel-item-detail">
+				<div
+					className="agent-panel-item-detail"
+					onClick={() => onOpen(agent)}
+				>
 					{hasQuickview ? (
 						<div className="agent-panel-quickview">
 							{agent.lastMessagePreview && (

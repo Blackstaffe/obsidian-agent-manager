@@ -58,9 +58,6 @@ export function AgentRunChat({
 		handleClearError,
 		handleClearAgentUpdate,
 		handleRestoreSession,
-		handleSetMode,
-		handleSetModel,
-		handleSetConfigOption,
 		inputValue,
 		setInputValue,
 		attachedFiles,
@@ -202,14 +199,6 @@ export function AgentRunChat({
 				onSendMessage={handleSendMessage}
 				onStopGeneration={handleStopGeneration}
 				onRestoredMessageConsumed={handleRestoredMessageConsumed}
-				modes={session.modes}
-				onModeChange={(modeId) => void handleSetMode(modeId)}
-				models={session.models}
-				onModelChange={(modelId) => void handleSetModel(modelId)}
-				configOptions={session.configOptions}
-				onConfigOptionChange={(configId, value) =>
-					void handleSetConfigOption(configId, value)
-				}
 				usage={session.usage}
 				supportsImages={session.promptCapabilities?.image ?? false}
 				agentId={session.agentId}

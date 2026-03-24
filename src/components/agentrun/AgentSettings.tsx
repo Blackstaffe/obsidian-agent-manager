@@ -4,6 +4,12 @@ import { setIcon, TFile, Notice } from "obsidian";
 import type AgentManagerPlugin from "../../plugin";
 import type { ManagedAgent } from "../../domain/models/managed-agent";
 import { AGENT_CATEGORIES } from "../../domain/models/managed-agent";
+import type { ProcessStateSnapshot } from "../../domain/models/agent-process";
+import type {
+	SessionConfigOption,
+	SessionConfigSelectGroup,
+} from "../../domain/models/session-update";
+import { flattenConfigSelectOptions } from "../../shared/config-option-utils";
 
 interface AgentSettingsProps {
 	agent: ManagedAgent;
@@ -185,6 +191,16 @@ export function AgentSettings({
 	const [schedule, setSchedule] = useState(agent.schedule ?? "");
 	const [collapsed, setCollapsed] = useState(true);
 
+	// Subscribe to process manager for live session config (modes, models, configOptions)
+	const [snapshot, setSnapshot] = useState<ProcessStateSnapshot | null>(
+		() => plugin.agentProcessManager.getProcessState(agent.id),
+	);
+
+	useEffect(() => {
+		const unsub = plugin.agentProcessManager.subscribe(agent.id, setSnapshot);
+		return unsub;
+	}, [agent.id, plugin.agentProcessManager]);
+
 	useEffect(() => {
 		setName(agent.name);
 		setSchedule(agent.schedule ?? "");
@@ -347,18 +363,14 @@ export function AgentSettings({
 						</div>
 					</div>
 
-					{/* Row 3: Toggles */}
-					<div className="acs-row">
-						<label className="acs-label">Auto-approve</label>
-						<div
-							className={`checkbox-container${agent.autoApprove ? " is-enabled" : ""}`}
-							onClick={() =>
-								void onUpdate({
-									autoApprove: !agent.autoApprove,
-								})
-							}
-						/>
-					</div>
+					{/* Row 3: Session config (mode, model, configOptions) */}
+					<SessionConfigDropdowns
+						snapshot={snapshot}
+						plugin={plugin}
+						managedAgentId={agent.id}
+					/>
+
+					{/* Row 4: Toggles */}
 					<div className="acs-row">
 						<label className="acs-label">Hide tool calls</label>
 						<div
@@ -383,6 +395,134 @@ export function AgentSettings({
 					</div>
 				</div>
 			)}
+		</div>
+	);
+}
+
+// ── Session config dropdowns ─────────────────────────────────────────────────
+
+function SessionConfigDropdowns({
+	snapshot,
+	plugin,
+	managedAgentId,
+}: {
+	snapshot: ProcessStateSnapshot | null;
+	plugin: AgentManagerPlugin;
+	managedAgentId: string;
+}) {
+	const info = snapshot?.sessionInfo;
+	if (!info || info.state !== "ready") return null;
+
+	const adapter = plugin.agentProcessManager.getAdapter(managedAgentId);
+	const sessionId = info.sessionId;
+	if (!adapter || !sessionId) return null;
+
+	// Prefer configOptions (new API) over legacy modes/models
+	if (info.configOptions && info.configOptions.length > 0) {
+		return (
+			<>
+				{info.configOptions.map((option) => (
+					<ConfigOptionRow
+						key={option.id}
+						option={option}
+						onChange={(value) =>
+							void adapter.setSessionConfigOption(
+								sessionId,
+								option.id,
+								value,
+							)
+						}
+					/>
+				))}
+			</>
+		);
+	}
+
+	// Legacy mode/model selectors
+	return (
+		<>
+			{info.modes && info.modes.availableModes.length > 1 && (
+				<div className="acs-row">
+					<label className="acs-label">Mode</label>
+					<select
+						className="acs-input dropdown"
+						value={info.modes.currentModeId}
+						onChange={(e) =>
+							void adapter.setSessionMode(sessionId, e.target.value)
+						}
+					>
+						{info.modes.availableModes.map((m) => (
+							<option key={m.id} value={m.id}>
+								{m.name}
+							</option>
+						))}
+					</select>
+				</div>
+			)}
+			{info.models && info.models.availableModels.length > 1 && (
+				<div className="acs-row">
+					<label className="acs-label">Model</label>
+					<select
+						className="acs-input dropdown"
+						value={info.models.currentModelId}
+						onChange={(e) =>
+							void adapter.setSessionModel(sessionId, e.target.value)
+						}
+					>
+						{info.models.availableModels.map((m) => (
+							<option key={m.modelId} value={m.modelId}>
+								{m.name}
+							</option>
+						))}
+					</select>
+				</div>
+			)}
+		</>
+	);
+}
+
+// ── Single config option row ─────────────────────────────────────────────────
+
+function ConfigOptionRow({
+	option,
+	onChange,
+}: {
+	option: SessionConfigOption;
+	onChange: (value: string) => void;
+}) {
+	const flatOptions = flattenConfigSelectOptions(option.options);
+	if (flatOptions.length <= 1) return null;
+
+	const isGrouped =
+		option.options.length > 0 && "group" in option.options[0];
+
+	return (
+		<div className="acs-row">
+			<label className="acs-label">{option.name}</label>
+			<select
+				className="acs-input dropdown"
+				value={option.currentValue}
+				title={option.description ?? option.name}
+				onChange={(e) => onChange(e.target.value)}
+			>
+				{isGrouped
+					? (option.options as SessionConfigSelectGroup[]).map(
+							(group) =>
+								group.options.map((opt) => (
+									<option
+										key={opt.value}
+										value={opt.value}
+									>
+										{group.name} / {opt.name}
+									</option>
+								)),
+						)
+					: flatOptions.map((opt) => (
+							<option key={opt.value} value={opt.value}>
+								{opt.name}
+							</option>
+						))}
+			</select>
 		</div>
 	);
 }
