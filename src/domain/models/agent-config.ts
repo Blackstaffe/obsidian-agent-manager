@@ -8,6 +8,33 @@
  */
 
 // ============================================================================
+// MCP Server Configuration
+// ============================================================================
+
+/**
+ * Configuration for a single MCP (Model Context Protocol) server.
+ *
+ * Supports both stdio (local process) and HTTP/SSE (remote) transports.
+ * Named servers are registered globally and referenced by name per process.
+ */
+export interface McpServerConfig {
+	/** Unique name used to reference this server (e.g., "filesystem", "github") */
+	name: string;
+
+	/** Command to run for stdio transport (mutually exclusive with url) */
+	command?: string;
+
+	/** URL for HTTP/SSE transport (mutually exclusive with command) */
+	url?: string;
+
+	/** Arguments passed to the stdio command */
+	args?: string[];
+
+	/** Environment variables for the server process */
+	env?: Record<string, string>;
+}
+
+// ============================================================================
 // Environment Configuration
 // ============================================================================
 

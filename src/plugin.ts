@@ -37,6 +37,7 @@ import {
 	ClaudeAgentSettings,
 	CodexAgentSettings,
 	CustomAgentSettings,
+	McpServerConfig,
 } from "./domain/models/agent-config";
 import type { SavedSessionInfo } from "./domain/models/session-info";
 import { initializeLogger } from "./shared/logger";
@@ -47,7 +48,7 @@ import { AGENTS_CHANGED_EVENT } from "./components/agentpanel/AgentPanelView";
 export const NOTIFICATION_UPDATE_EVENT = "agent-manager:notification-update";
 
 // Re-export for backward compatibility
-export type { AgentEnvVar, CustomAgentSettings };
+export type { AgentEnvVar, CustomAgentSettings, McpServerConfig };
 
 /**
  * Send message shortcut configuration.
@@ -113,6 +114,8 @@ export interface AgentManagerPluginSettings {
 	lastUsedModels: Record<string, string>;
 	// Last used mode per agent (agentId → modeId)
 	lastUsedModes: Record<string, string>;
+	/** Global MCP server registry — servers referenced by name from ManagedAgent.mcps */
+	mcpServers: McpServerConfig[];
 	/** Managed autonomous agents */
 	managedAgents: ManagedAgent[];
 	/** Vault-relative path to process template file for creating new instructions */
@@ -184,6 +187,7 @@ const DEFAULT_SETTINGS: AgentManagerPluginSettings = {
 	savedSessions: [],
 	lastUsedModels: {},
 	lastUsedModes: {},
+	mcpServers: [],
 	managedAgents: [],
 	processTemplatePath: "",
 	hideRunProcessMessage: false,
@@ -249,16 +253,24 @@ export default class AgentManagerPlugin extends Plugin {
 
 		this.ribbonIconEl = this.addRibbonIcon(
 			"bird",
-			"Open agent manager",
-			(_evt: MouseEvent) => {
+			"New agent chat (right-click for panel)",
+			(evt: MouseEvent) => {
+				// Right-click is handled by contextmenu listener
+				if (evt.button !== 0) return;
 				// Acknowledge chat notification when user clicks ribbon
 				if (this.hasChatNotification) {
 					this._chatCompletePending = 0;
 					this.updateBirdNotificationDot();
 				}
-				void this.activateView();
+				void this.openNewChatInEditor(
+					this.settings.defaultAgentId,
+				);
 			},
 		);
+		this.ribbonIconEl.addEventListener("contextmenu", (evt: MouseEvent) => {
+			evt.preventDefault();
+			void this.activateAgentPanel();
+		});
 		this.ribbonIconEl.addClass("agent-manager-ribbon-icon");
 
 		this.addCommand({
@@ -583,10 +595,14 @@ export default class AgentManagerPlugin extends Plugin {
 
 	async activateAgentPanel() {
 		const { workspace } = this.app;
-		if (workspace.getLeavesOfType(VIEW_TYPE_AGENT_PANEL).length > 0) return;
+		const existing = workspace.getLeavesOfType(VIEW_TYPE_AGENT_PANEL);
+		if (existing.length > 0) {
+			await workspace.revealLeaf(existing[0]);
+			return;
+		}
 		const leaf = workspace.getLeftLeaf(false);
 		if (leaf) {
-			await leaf.setViewState({ type: VIEW_TYPE_AGENT_PANEL, active: false });
+			await leaf.setViewState({ type: VIEW_TYPE_AGENT_PANEL, active: true });
 		}
 	}
 
@@ -673,6 +689,37 @@ export default class AgentManagerPlugin extends Plugin {
 		return side === "right"
 			? workspace.getRightLeaf(false)
 			: workspace.getLeftLeaf(false);
+	}
+
+	/**
+	 * Open a new chat in the main editor area, ignoring chatViewLocation setting.
+	 * Used by the ribbon icon for quick-launch.
+	 */
+	async openNewChatInEditor(agentId: string): Promise<void> {
+		// Get the root (center) split and create a tab there,
+		// regardless of which split currently has focus
+		const rootSplit = this.app.workspace.rootSplit as unknown as {
+			children?: WorkspaceSplit[];
+		};
+		const tabParent = (rootSplit.children?.[0] ??
+			this.app.workspace.rootSplit) as unknown as WorkspaceSplit;
+		const leaf = this.app.workspace.createLeafInParent(
+			tabParent,
+			Number.MAX_SAFE_INTEGER,
+		);
+		if (!leaf) {
+			console.warn("[AgentManager] Failed to create editor leaf");
+			return;
+		}
+
+		await leaf.setViewState({
+			type: VIEW_TYPE_CHAT,
+			active: true,
+			state: { initialAgentId: agentId },
+		});
+
+		await this.app.workspace.revealLeaf(leaf);
+		this.focusTextarea(leaf);
 	}
 
 	/**
@@ -1373,6 +1420,9 @@ export default class AgentManagerPlugin extends Plugin {
 				typeof rawSettings.hideRunProcessMessage === "boolean"
 					? rawSettings.hideRunProcessMessage
 					: DEFAULT_SETTINGS.hideRunProcessMessage,
+			mcpServers: Array.isArray(rawSettings.mcpServers)
+				? (rawSettings.mcpServers as McpServerConfig[])
+				: DEFAULT_SETTINGS.mcpServers,
 		};
 
 		this.ensureDefaultAgentId();

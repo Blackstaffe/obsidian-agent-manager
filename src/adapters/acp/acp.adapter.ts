@@ -8,6 +8,7 @@ import type {
 	InitializeResult,
 	NewSessionResult,
 } from "../../domain/ports/agent-manager.port";
+import type { McpServerConfig } from "../../domain/models/agent-config";
 import type {
 	MessageContent,
 	PermissionOption,
@@ -113,6 +114,35 @@ export class AcpAdapter implements IAgentManager, IAcpClient {
 		toolCallId: string;
 		options: PermissionOption[];
 	}> = [];
+
+	/**
+	 * Convert domain McpServerConfig[] to the ACP SDK McpServer union type.
+	 * Stdio servers: command required, env as [{name,value}] array.
+	 * HTTP servers: url required, headers empty array.
+	 */
+	private toAcpMcpServers(configs: McpServerConfig[]): acp.McpServer[] {
+		return configs.map((s): acp.McpServer => {
+			if (s.url) {
+				return {
+					type: "http" as const,
+					name: s.name,
+					url: s.url,
+					headers: [],
+				};
+			}
+			return {
+				name: s.name,
+				command: s.command ?? "",
+				args: s.args ?? [],
+				env: s.env
+					? Object.entries(s.env).map(([name, value]) => ({
+							name,
+							value,
+						}))
+					: [],
+			};
+		});
+	}
 
 	// Tracks whether any session update was received during the current prompt.
 	// Used to detect silent failures (e.g., missing API keys) where the agent
@@ -550,7 +580,7 @@ export class AcpAdapter implements IAgentManager, IAcpClient {
 
 			const sessionResult = await this.connection.newSession({
 				cwd: sessionCwd,
-				mcpServers: [],
+				mcpServers: this.toAcpMcpServers(this.currentConfig?.mcpServers ?? []),
 			});
 
 			this.logger.log(
@@ -833,6 +863,16 @@ export class AcpAdapter implements IAgentManager, IAcpClient {
 	 */
 	getCurrentAgentId(): string | null {
 		return this.currentAgentId;
+	}
+
+	/**
+	 * Update the MCP servers list on the current config.
+	 * Takes effect on the next session call (newSession / forkSession).
+	 */
+	updateMcpServers(mcpServers: McpServerConfig[]): void {
+		if (this.currentConfig) {
+			this.currentConfig = { ...this.currentConfig, mcpServers };
+		}
 	}
 
 	/**
@@ -1613,7 +1653,7 @@ export class AcpAdapter implements IAgentManager, IAcpClient {
 			const response = await this.connection.loadSession({
 				sessionId,
 				cwd: sessionCwd,
-				mcpServers: [],
+				mcpServers: this.toAcpMcpServers(this.currentConfig?.mcpServers ?? []),
 			});
 
 			// Conversation history is received via session/update notifications
@@ -1700,7 +1740,7 @@ export class AcpAdapter implements IAgentManager, IAcpClient {
 			const response = await this.connection.unstable_resumeSession({
 				sessionId,
 				cwd: sessionCwd,
-				mcpServers: [],
+				mcpServers: this.toAcpMcpServers(this.currentConfig?.mcpServers ?? []),
 			});
 
 			this.logger.log(`[AcpAdapter] Session resumed: ${sessionId}`);
@@ -1783,7 +1823,7 @@ export class AcpAdapter implements IAgentManager, IAcpClient {
 			const response = await this.connection.unstable_forkSession({
 				sessionId,
 				cwd: sessionCwd,
-				mcpServers: [],
+				mcpServers: this.toAcpMcpServers(this.currentConfig?.mcpServers ?? []),
 			});
 
 			const newSessionId = response.sessionId;

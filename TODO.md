@@ -2,6 +2,8 @@
 
 ## Minor
 
+- [ ] Investigate how to expose Obsidian functionality to agents
+- [ ] Find a way to expose PDFs in @mentions (currently only notes are surfaced; investigate vault PDF indexing and path passing to agents) (e.g. fold headings, navigate notes, trigger commands) — evaluate Obsidian URI scheme, Advanced URI plugin, and custom ACP tools as mechanisms
 - [ ] Fix alignment of explorer to match file explorer
 - [ ] Fix chevron sizes to match file explorer
 - [x] Make quickview text clickable to open agent
@@ -11,9 +13,12 @@
 - [x] Change user chat bubble to a slightly darker grey for better visual distinction
 - [ ] Only pass @[[instruction file]] mention in the first chat message (reverted — agent loses context without it on subsequent messages)
 - [x] Add global plugin setting to hide the initial "Run process" user message (with instruction file mention) from chat view
-- [ ] Mode and model settings should be per-process (saved to ManagedAgent config), not per-session (currently lost on restart)
+- [x] Mode and model settings should be per-process (saved to ManagedAgent config), not per-session (currently lost on restart)
 - [ ] Fix status dot locations (positioning off)
-- [ ] Auto-update tab titles when agent name is changed
+- [ ] Left-click bird icon in ribbon opens a new chat with the default agent (right-click or long-press for panel)
+- [x] Auto-update tab titles when agent name is changed
+- [ ] YAML frontmatter as sole source of truth for per-agent config (model, mode, tools, mcps, schedule, name, category, hideToolCalls, hideThoughts) — ManagedAgent in data.json slims to runtime/display state only; enables AI-managed process config. See `.claude/plans/yaml-frontmatter-config.md`
+- [x] MCP server support: add global `McpServerConfig[]` registry to plugin settings, wire `ManagedAgent.mcps: string[]` (already modeled) to resolve named servers at session start, pass resolved configs to all four `newSession`/`loadSession`/`resumeSession`/`forkSession` calls in `acp.adapter.ts`. UI: global registry in settings tab + per-process MCP checkbox selection in agent config.
 
 ---
 

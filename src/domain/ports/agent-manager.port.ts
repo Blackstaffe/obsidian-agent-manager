@@ -12,6 +12,7 @@
  */
 
 import type { PermissionOption } from "../models/chat-message";
+import type { McpServerConfig } from "../models/agent-config";
 import type {
 	AuthenticationMethod,
 	SessionModeState,
@@ -64,6 +65,9 @@ export interface AgentConfig {
 
 	/** Working directory for the agent session */
 	workingDirectory: string;
+
+	/** MCP servers to connect for this session (resolved from ManagedAgent.mcps names) */
+	mcpServers?: McpServerConfig[];
 }
 
 /**

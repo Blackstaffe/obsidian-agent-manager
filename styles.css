@@ -2850,6 +2850,31 @@ If your plugin does not need CSS, delete this file.
 	min-width: 60px;
 }
 
+/* MCP server checkbox list in AgentSettings */
+.acs-mcp-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.acs-mcp-item {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background: var(--background-modifier-hover);
+	border-radius: var(--radius-s);
+	padding: 2px 7px;
+	font-size: var(--font-small);
+	color: var(--text-normal);
+	cursor: pointer;
+	user-select: none;
+}
+
+.acs-mcp-item input[type="checkbox"] {
+	margin: 0;
+	cursor: pointer;
+}
+
 /* Chat pane */
 .agent-run-chat-pane {
 	flex: 1;

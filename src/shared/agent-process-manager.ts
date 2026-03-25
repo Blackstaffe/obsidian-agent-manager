@@ -8,6 +8,7 @@
 import { FileSystemAdapter } from "obsidian";
 
 import type AgentManagerPlugin from "../plugin";
+import type { McpServerConfig } from "../domain/models/agent-config";
 import type {
 	AgentProcessState,
 	AgentSessionInfo,
@@ -86,12 +87,22 @@ export class AgentProcessManager {
 		const workingDirectory = this.getVaultPath();
 		state.sessionInfo.workingDirectory = workingDirectory;
 
-		const agentConfig = buildAgentConfigWithApiKey(
-			settings,
-			agentSettings,
-			agentId,
-			workingDirectory,
+		const managedAgent = settings.managedAgents.find(
+			(a) => a.id === managedAgentId,
 		);
+		const resolvedMcps: McpServerConfig[] = (managedAgent?.mcps ?? [])
+			.map((name) => settings.mcpServers.find((s) => s.name === name))
+			.filter((s): s is McpServerConfig => s !== undefined);
+
+		const agentConfig = {
+			...buildAgentConfigWithApiKey(
+				settings,
+				agentSettings,
+				agentId,
+				workingDirectory,
+			),
+			mcpServers: resolvedMcps,
+		};
 
 		// Create adapter and register update callback before initializing
 		const adapter = new AcpAdapter(this.plugin);
@@ -162,6 +173,71 @@ export class AgentProcessManager {
 		}
 
 		await this.updateManagedAgentStatus(managedAgentId, "idle");
+	}
+
+	/**
+	 * Reload MCP servers for a running process without losing conversation history.
+	 *
+	 * If the agent supports forkSession, forks the current session with the new
+	 * MCP set (history preserved). Otherwise falls back to stop + restart.
+	 */
+	async reloadMcps(managedAgentId: string): Promise<void> {
+		const state = this.processes.get(managedAgentId);
+		const adapter = this.adapters.get(managedAgentId);
+
+		if (!adapter || !state || state.sessionInfo.state !== "ready") {
+			// Not running — next startProcess will pick up the new mcps
+			return;
+		}
+
+		const settings = this.plugin.settings;
+		const managedAgent = settings.managedAgents.find(
+			(a) => a.id === managedAgentId,
+		);
+		const resolvedMcps = (managedAgent?.mcps ?? [])
+			.map((name) => settings.mcpServers.find((s) => s.name === name))
+			.filter((s): s is McpServerConfig => s !== undefined);
+
+		// Push new MCP list onto the adapter so forkSession picks it up
+		adapter.updateMcpServers(resolvedMcps);
+
+		const canFork =
+			!!state.sessionInfo.agentCapabilities?.sessionCapabilities?.fork;
+		const sessionId = state.sessionInfo.sessionId;
+		const workingDirectory = state.sessionInfo.workingDirectory;
+
+		if (canFork && sessionId && workingDirectory) {
+			try {
+				state.sessionInfo.state = "initializing";
+				this.notifyListeners(managedAgentId);
+
+				const forkResult = await adapter.forkSession(
+					sessionId,
+					workingDirectory,
+				);
+				state.sessionInfo.sessionId = forkResult.sessionId;
+				state.sessionInfo.modes = forkResult.modes;
+				state.sessionInfo.models = forkResult.models;
+				state.sessionInfo.configOptions = forkResult.configOptions;
+				state.sessionInfo.state = "ready";
+
+				this.logger.log(
+					`[AgentProcessManager] MCP reload via fork: ${sessionId} → ${forkResult.sessionId}`,
+				);
+				this.notifyListeners(managedAgentId);
+				return;
+			} catch (err) {
+				this.logger.warn(
+					"[AgentProcessManager] Fork failed, falling back to restart:",
+					err,
+				);
+				state.sessionInfo.state = "ready";
+			}
+		}
+
+		// Fallback: stop + restart (loses history)
+		await this.stopProcess(managedAgentId);
+		await this.startProcess(managedAgentId);
 	}
 
 	/**

@@ -371,7 +371,47 @@ export function AgentSettings({
 						onUpdate={onUpdate}
 					/>
 
-					{/* Row 4: Toggles */}
+					{/* Row 4: MCP servers */}
+					{plugin.settings.mcpServers.length > 0 && (
+						<div className="acs-row acs-row--wide">
+							<label className="acs-label">MCP servers</label>
+							<div className="acs-mcp-list">
+								{plugin.settings.mcpServers.map((server) => (
+									<label
+										key={server.name}
+										className="acs-mcp-item"
+									>
+										<input
+											type="checkbox"
+											checked={agent.mcps.includes(
+												server.name,
+											)}
+											onChange={(e) => {
+												const mcps = e.target.checked
+													? [
+															...agent.mcps,
+															server.name,
+														]
+													: agent.mcps.filter(
+															(n) =>
+																n !== server.name,
+														);
+												void onUpdate({ mcps }).then(
+													() =>
+														plugin.agentProcessManager.reloadMcps(
+															agent.id,
+														),
+												);
+											}}
+										/>
+										{server.name}
+									</label>
+								))}
+							</div>
+						</div>
+					)}
+
+					{/* Row 5: Toggles */}
 					<div className="acs-row">
 						<label className="acs-label">Hide tool calls</label>
 						<div

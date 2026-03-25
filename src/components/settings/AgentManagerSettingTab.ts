@@ -10,6 +10,7 @@ import type {
 	CustomAgentSettings,
 	AgentEnvVar,
 	ChatViewLocation,
+	McpServerConfig,
 } from "../../plugin";
 import { normalizeEnvVars } from "../../shared/settings-utils";
 import {
@@ -685,6 +686,18 @@ export class AgentManagerSettingTab extends PluginSettingTab {
 			);
 
 		// ─────────────────────────────────────────────────────────────────────
+		// MCP Servers
+		// ─────────────────────────────────────────────────────────────────────
+
+		new Setting(containerEl).setName("MCP servers").setHeading();
+
+		new Setting(containerEl).setDesc(
+			"Define MCP (Model Context Protocol) servers. Assign them to individual processes in the process configuration panel.",
+		);
+
+		this.renderMcpServers(containerEl);
+
+		// ─────────────────────────────────────────────────────────────────────
 		// Developer
 		// ─────────────────────────────────────────────────────────────────────
 
@@ -1216,6 +1229,174 @@ export class AgentManagerSettingTab extends PluginSettingTab {
 			.split(/\r?\n/)
 			.map((line) => line.trim())
 			.filter((line) => line.length > 0);
+	}
+
+	private renderMcpServers(containerEl: HTMLElement) {
+		if (this.plugin.settings.mcpServers.length === 0) {
+			containerEl.createEl("p", { text: "No MCP servers configured yet." });
+		} else {
+			this.plugin.settings.mcpServers.forEach((server, index) => {
+				this.renderMcpServer(containerEl, server, index);
+			});
+		}
+
+		new Setting(containerEl).addButton((button) => {
+			button
+				.setButtonText("Add MCP server")
+				.setCta()
+				.onClick(async () => {
+					const base = "mcp-server";
+					const existing = new Set(
+						this.plugin.settings.mcpServers.map((s) => s.name),
+					);
+					let name = base;
+					let counter = 2;
+					while (existing.has(name)) {
+						name = `${base}-${counter++}`;
+					}
+					this.plugin.settings.mcpServers.push({ name, command: "" });
+					await this.plugin.saveSettings();
+					this.display();
+				});
+		});
+	}
+
+	private renderMcpServer(
+		containerEl: HTMLElement,
+		server: McpServerConfig,
+		index: number,
+	) {
+		const blockEl = containerEl.createDiv({ cls: "agent-manager-custom-agent" });
+
+		const isHttp = !server.command && !!server.url;
+
+		const nameSetting = new Setting(blockEl)
+			.setName("Name")
+			.setDesc("Unique identifier referenced by process configs.")
+			.addText((text) => {
+				text.setPlaceholder("e.g. filesystem")
+					.setValue(server.name)
+					.onChange(async (value) => {
+						const trimmed = value.trim();
+						if (trimmed) {
+							this.plugin.settings.mcpServers[index].name = trimmed;
+							await this.plugin.saveSettings();
+						}
+					});
+			});
+
+		nameSetting.addExtraButton((button) => {
+			button
+				.setIcon("trash")
+				.setTooltip("Remove this MCP server")
+				.onClick(async () => {
+					this.plugin.settings.mcpServers.splice(index, 1);
+					await this.plugin.saveSettings();
+					this.display();
+				});
+		});
+
+		new Setting(blockEl)
+			.setName("Transport")
+			.setDesc("stdio: local process. http: remote HTTP/SSE server.")
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("stdio", "stdio (local process)")
+					.addOption("http", "HTTP / SSE (remote)")
+					.setValue(isHttp ? "http" : "stdio")
+					.onChange(async (value) => {
+						if (value === "http") {
+							this.plugin.settings.mcpServers[index].command = undefined;
+							this.plugin.settings.mcpServers[index].args = undefined;
+							this.plugin.settings.mcpServers[index].env = undefined;
+							if (!this.plugin.settings.mcpServers[index].url) {
+								this.plugin.settings.mcpServers[index].url = "";
+							}
+						} else {
+							this.plugin.settings.mcpServers[index].url = undefined;
+							if (!this.plugin.settings.mcpServers[index].command) {
+								this.plugin.settings.mcpServers[index].command = "";
+							}
+						}
+						await this.plugin.saveSettings();
+						this.display();
+					});
+			});
+
+		if (isHttp) {
+			new Setting(blockEl)
+				.setName("URL")
+				.setDesc("HTTP or SSE endpoint for the MCP server.")
+				.addText((text) => {
+					text.setPlaceholder("http://localhost:3000/mcp")
+						.setValue(server.url ?? "")
+						.onChange(async (value) => {
+							this.plugin.settings.mcpServers[index].url = value.trim();
+							await this.plugin.saveSettings();
+						});
+				});
+		} else {
+			new Setting(blockEl)
+				.setName("Command")
+				.setDesc("Absolute path to the MCP server executable.")
+				.addText((text) => {
+					text.setPlaceholder("/usr/local/bin/mcp-server")
+						.setValue(server.command ?? "")
+						.onChange(async (value) => {
+							this.plugin.settings.mcpServers[index].command = value.trim();
+							await this.plugin.saveSettings();
+						});
+				});
+
+			new Setting(blockEl)
+				.setName("Arguments")
+				.setDesc("One argument per line.")
+				.addTextArea((text) => {
+					text.setPlaceholder("")
+						.setValue(this.formatArgs(server.args ?? []))
+						.onChange(async (value) => {
+							this.plugin.settings.mcpServers[index].args =
+								this.parseArgs(value);
+							await this.plugin.saveSettings();
+						});
+					text.inputEl.rows = 3;
+				});
+
+			new Setting(blockEl)
+				.setName("Environment variables")
+				.setDesc("KEY=VALUE pairs, one per line.")
+				.addTextArea((text) => {
+					text.setPlaceholder("TOKEN=...")
+						.setValue(this.formatMcpEnv(server.env))
+						.onChange(async (value) => {
+							this.plugin.settings.mcpServers[index].env =
+								this.parseMcpEnv(value);
+							await this.plugin.saveSettings();
+						});
+					text.inputEl.rows = 3;
+				});
+		}
+	}
+
+	private formatMcpEnv(env: Record<string, string> | undefined): string {
+		if (!env) return "";
+		return Object.entries(env)
+			.map(([k, v]) => `${k}=${v}`)
+			.join("\n");
+	}
+
+	private parseMcpEnv(value: string): Record<string, string> {
+		const result: Record<string, string> = {};
+		for (const line of value.split(/\r?\n/)) {
+			const trimmed = line.trim();
+			if (!trimmed) continue;
+			const idx = trimmed.indexOf("=");
+			if (idx === -1) continue;
+			const key = trimmed.slice(0, idx).trim();
+			const val = trimmed.slice(idx + 1).trim();
+			if (key) result[key] = val;
+		}
+		return result;
 	}
 
 	private formatEnv(env: AgentEnvVar[]): string {
